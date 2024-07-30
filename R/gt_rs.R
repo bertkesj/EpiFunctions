@@ -19,7 +19,6 @@
 #' @return A tibble containing the risk sets for each case using age as the time-scale.
 #' @export
 #'
-#' @examples
 gt_rs <- function(person){
   # Expects: id, case, race, sex, dob, pybegin, dlo!!!!!
   # Calculate age risk begin and end for all people

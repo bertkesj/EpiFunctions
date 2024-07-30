@@ -32,5 +32,5 @@ A list containing:
 Performs Cox proportional regression on a tibble risk-sets
 that were outputted from \code{get_rs()} function. Both a linear piece and
 log-linear piece of the hazard function can be specified. The hazard function
-has the general form: h(t) = exp(loglin) * (1 + lin).
+has the general form: h(t) = h0(t) * exp(loglin) * (1 + lin).
 }
