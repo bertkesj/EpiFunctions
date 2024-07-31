@@ -17,8 +17,8 @@
 #' @noRd
 #'
 get_CI <- function(.i, o, data, Xloglin, Xlin, ll, se, alpha=0.95, verbose=T) {
-  library(tidyverse)
-  library(numDeriv)
+  #library(tidyverse)
+  #library(numDeriv)
 
   #Define Functions for optimization
   #f3 is a wrapper around the log-likelihood (ll)
