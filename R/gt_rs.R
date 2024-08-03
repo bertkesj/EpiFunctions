@@ -29,7 +29,7 @@ gt_rs <- function(person){
                       units='days') %>%
              as.numeric() %>%
              `/`(365.25),
-           age_risk_begin =
+           age_risk_end =
              difftime(dlo,
                       dob,
                       units='days') %>%

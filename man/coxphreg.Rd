@@ -2,19 +2,19 @@
 % Please edit documentation in R/coxphreg.R
 \name{coxphreg}
 \alias{coxphreg}
-\title{Run Cox Proportional Regression on Risk-Sets}
+\title{Cox Proportional Regression}
 \usage{
-coxphreg(lin = ~1, loglin = ~1, data, gcis = F)
+coxphreg(data, lin = ~1, loglin = ~1, gcis = F)
 }
 \arguments{
+\item{data}{A tibble/data.frame like object containing risk-sets. Variables
+\code{case_id} and \code{case} are required to be contained in the data.frame.}
+
 \item{lin}{A one sided function containing covariates in linear section of
 hazard function}
 
 \item{loglin}{A one sided function containing covariates in log-linear
 section of hazard function}
-
-\item{data}{A tibble/data.frame like object containing risk-sets. Variables
-\code{case_id} and \code{case} are required to be contained in the data.frame.}
 
 \item{gcis}{A boolean (TRUE/FALSE) indicating if profile-likelihood CIs should
 be calcualted.}
@@ -29,7 +29,7 @@ A list containing:
 }
 }
 \description{
-Performs Cox proportional regression on a tibble risk-sets
+Performs Cox proportional regression on a tibble of risk-sets
 that were outputted from \code{get_rs()} function. Both a linear piece and
 log-linear piece of the hazard function can be specified. The hazard function
 has the general form: h(t) = h0(t) * exp(loglin) * (1 + lin).

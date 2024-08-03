@@ -1,16 +1,16 @@
-#' Run Cox Proportional Regression on Risk-Sets
+#' Cox Proportional Regression
 #'
-#' Performs Cox proportional regression on a tibble risk-sets
+#' Performs Cox proportional regression on a tibble of risk-sets
 #'   that were outputted from `get_rs()` function. Both a linear piece and
 #'   log-linear piece of the hazard function can be specified. The hazard function
 #'   has the general form: h(t) = h0(t) * exp(loglin) * (1 + lin).
 #'
+#' @param data A tibble/data.frame like object containing risk-sets. Variables
+#' `case_id` and `case` are required to be contained in the data.frame.
 #' @param lin A one sided function containing covariates in linear section of
 #' hazard function
 #' @param loglin A one sided function containing covariates in log-linear
 #' section of hazard function
-#' @param data A tibble/data.frame like object containing risk-sets. Variables
-#' `case_id` and `case` are required to be contained in the data.frame.
 #' @param gcis A boolean (TRUE/FALSE) indicating if profile-likelihood CIs should
 #' be calcualted.
 #'
@@ -24,8 +24,8 @@
 #' @export
 #'
 #' @examples
-coxphreg <- function(lin = ~ 1, loglin = ~ 1, data, gcis = F){
-  ll <- function(b, data, Xloglin, Xlin) {
+coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
+  ll <- function(b, data, Xloglin, Xlin, ss=quos()) {
     hloglin <- rep(0, nrow(data))
     hlin <- rep(0, nrow(data))
     if (ncol(Xloglin) != 0) hloglin <- Xloglin %*% b[1:ncol(Xloglin)]
@@ -35,13 +35,13 @@ coxphreg <- function(lin = ~ 1, loglin = ~ 1, data, gcis = F){
     ll <- data %>%
       group_by(case_id) %>%
       dplyr::summarize(den = sum(h),
-                       num = sum(c*h)) %>%
+                       num = sum(case*h)) %>%
       mutate(L = num / den) %>%
       dplyr::summarize(x = sum(log(L)))
 
     return(ll$x)
   }
-  g <- function(b, data, Xloglin, Xlin) {
+  g <- function(b, data, Xloglin, Xlin, ss=quos()) {
     if (ncol(Xloglin) != 0) hloglin <- exp(as.numeric(Xloglin %*% b[1:ncol(Xloglin)])) else hloglin <- rep(1, nrow(data))
     if (ncol(Xlin) != 0) hlin <-  (1 + as.numeric(Xlin %*% b[(ncol(Xloglin) + 1):tot])) else hlin <- rep(1, nrow(data))
     data$hloglin <- hloglin
@@ -55,7 +55,7 @@ coxphreg <- function(lin = ~ 1, loglin = ~ 1, data, gcis = F){
                             mutate(h = hloglin*hlin) %>%
                             dplyr::summarize(den = sum(h),
                                              num = sum(h*x),
-                                             cx = sum(c*x),
+                                             cx = sum(case*x),
                                              .groups = 'drop') %>%
                             mutate(L = cx - num/den) %>%
                             dplyr::summarize(x = sum(L)) %>%
@@ -68,8 +68,8 @@ coxphreg <- function(lin = ~ 1, loglin = ~ 1, data, gcis = F){
                          group_by(case_id) %>%
                          dplyr::summarize(den = sum(hloglin*hlin),
                                           num = sum(hloglin*x),
-                                          cxn = sum(c*x),
-                                          cxd = sum(c*hlin),
+                                          cxn = sum(case*x),
+                                          cxd = sum(case*hlin),
                                           .groups = 'drop') %>%
                          mutate(L = cxn/cxd - num/den) %>%
                          dplyr::summarize(x = sum(L)) %>%
@@ -87,7 +87,10 @@ coxphreg <- function(lin = ~ 1, loglin = ~ 1, data, gcis = F){
   tot <- ncol(Xlin) + ncol(Xloglin)
   b <- rep(0, tot)
 
-  o <- optim(b, ll, gr=g, data=data, Xloglin=Xloglin, Xlin=Xlin, hessian = TRUE, method = "BFGS", control=list(fnscale=-1))#
+  o <- optim(b, ll, gr=g,
+             data=data, Xloglin=Xloglin, Xlin=Xlin,
+             hessian = TRUE, method = "BFGS",
+             control=list(fnscale=-1))#
   se <- sqrt(diag(solve(-o$hessian)))
 
   #Confidence Interval Profile
@@ -126,15 +129,16 @@ coxphreg <- function(lin = ~ 1, loglin = ~ 1, data, gcis = F){
     upper <- cis[[2]]
   } else {
     #Confidence Interval Wald
-    lower <- o$par - 1.96*se
-    upper <- o$par + 1.96*se
+    lower <- NA
+    upper <- NA
   }
 
   out <- tibble(var = c(colnames(Xloglin), colnames(Xlin)),
                 est = o$par,
                 se = se,
                 lower = lower,
-                upper = upper)
+                upper = upper,
+                gradient = fp(o$par, Xloglin, Xlin, data, ss))
   return(list(output=out,
               neg2LL = - 2*o$value,
               AIC = - 2*o$value + 2*tot,
