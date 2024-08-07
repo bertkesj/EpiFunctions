@@ -22,25 +22,24 @@
 #' *  hessian:     Hessian matrix o$hessian
 #'
 #' @export
-#'
-#' @importFrom magrittr %>%
-#'
+#' @importFrom rlang .data
 #' @examples
 coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
 
   ll <- function(b, data, Xloglin, Xlin) {
+
     hloglin <- rep(0, nrow(data))
     hlin <- rep(0, nrow(data))
     if (ncol(Xloglin) != 0) hloglin <- Xloglin %*% b[1:ncol(Xloglin)]
     if (ncol(Xlin) != 0) hlin <-  Xlin %*% b[(ncol(Xloglin) + 1):tot]
+    data$h = exp(hloglin)*(1 + hlin)
 
     ll <- data %>%
-      dplyr::mutate(h = exp(hloglin)*(1 + hlin))
-      dplyr::group_by('case_id') %>%
-      dplyr::summarize(den = sum(h),
-                       num = sum(.data$case*h)) %>%
-      dplyr::mutate(L = num / den) %>%
-      dplyr::summarize(x = sum(log(L)))
+      dplyr::group_by(.data$case_id) %>%
+      dplyr::summarize(den = sum(.data$h),
+                       num = sum(.data$case*.data$h)) %>%
+      dplyr::mutate(L = .data$num / .data$den) %>%
+      dplyr::summarize(x = sum(log(.data$L)))
 
     return(ll$x)
   }
@@ -50,12 +49,13 @@ coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
     if (ncol(Xloglin) != 0) hloglin <- exp(as.numeric(Xloglin %*% b[1:ncol(Xloglin)]))
     if (ncol(Xlin) != 0) hlin <-  (1 + as.numeric(Xlin %*% b[(ncol(Xloglin) + 1):tot]))
 
+    data$h = hloglin*hlin
+
     bbloglin <- purrr::map_dbl(asplit(Xloglin, 2),
                         ~ {
                           data$x <- as.numeric(.x)
                           data %>%
                             dplyr::group_by(case_id) %>%
-                            dplyr::mutate(h = hloglin*hlin) %>%
                             dplyr::summarize(den = sum(h),
                                              num = sum(h*x),
                                              cx = sum(case*x),
@@ -141,7 +141,7 @@ coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
                 se = se,
                 lower = lower,
                 upper = upper,
-                gradient = g(o$par, Xloglin, Xlin, data, ss))
+                gradient = g(o$par, Xloglin=Xloglin, Xlin=Xlin, data=data))
   return(list(output=out,
               neg2LL = - 2*o$value,
               AIC = - 2*o$value + 2*tot,

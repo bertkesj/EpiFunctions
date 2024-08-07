@@ -21,5 +21,5 @@ cum_exp <- function(var, begin_dt, end_dt, cut_dt, lag=0){
   ct <- cut_dt - floor(lag*365.25)
   cum <- ((pmin(end_dt, ct) - begin_dt + 1) * var) %>%
     as.numeric()
-  cum <- if_else(ct >= begin_dt, cum, 0)
+  cum <- dplyr::if_else(ct >= begin_dt, cum, 0)
 }

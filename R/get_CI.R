@@ -34,12 +34,12 @@ get_CI <- function(.i, o, ll, se, ..., alpha=0.95, verbose=T) {
   vi <- floor((.i - 1) / 2) + 1
   orig_ll <- o$value
   orig_est <- o$par[vi]
-  goal <- qchisq(alpha, df = 1)
+  goal <- stats::qchisq(alpha, df = 1)
 
   if (.i %% 2 == 0) sgn <- 1      #upper
   if (.i %% 2 == 1) sgn <- -1     #lower
 
-  step <- qnorm(1 - (1-alpha)/2) * se[vi] / 4
+  step <- stats::qnorm(1 - (1-alpha)/2) * se[vi] / 4
   if (is.na(step)) step <- abs(orig_est*.2)
   value <- orig_est + sgn*step
   lastpar <- o$par[-vi]
@@ -62,7 +62,7 @@ get_CI <- function(.i, o, ll, se, ..., alpha=0.95, verbose=T) {
     } else { #For models with multiple parameters
 
       cont <- list(maxit = 10000, fnscale=-1)
-      ol <- tryCatch(expr = {optim(pmax(lastpar, 0), f3,
+      ol <- tryCatch(expr = {stats::optim(pmax(lastpar, 0), f3,
                                    value=value, vi=vi,
                                    ...,
                                    ll=ll,
@@ -90,8 +90,8 @@ get_CI <- function(.i, o, ll, se, ..., alpha=0.95, verbose=T) {
 
     }
   }
-  sp <- spline(ests, diffs, n=10*length(ests))
-  value <- approx(sp$y, sp$x, xout=goal)$y
+  sp <- stats::spline(ests, diffs, n=10*length(ests))
+  value <- stats::approx(sp$y, sp$x, xout=goal)$y
 
   return(value)
 }

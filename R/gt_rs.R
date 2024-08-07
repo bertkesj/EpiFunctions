@@ -23,15 +23,15 @@ gt_rs <- function(person){
   # Expects: id, case, race, sex, dob, pybegin, dlo!!!!!
   # Calculate age risk begin and end for all people
   person <- person %>%
-    mutate(age_risk_begin =
-             difftime(pybegin,
-                      dob,
+    dplyr::mutate(age_risk_begin =
+             difftime(.data$pybegin,
+                      .data$dob,
                       units='days') %>%
              as.numeric() %>%
              `/`(365.25),
            age_risk_end =
-             difftime(dlo,
-                      dob,
+             difftime(.data$dlo,
+                      .data$dob,
                       units='days') %>%
              as.numeric() %>%
              `+`(1) %>%
@@ -39,18 +39,18 @@ gt_rs <- function(person){
 
   # Create Risksets
   risk_sets <- person %>%
-    dplyr::filter(case) %>%
-    select(case_id = id, case_age = age_risk_end,
-           sex, race, dob) %>%
-    left_join(person,
+    dplyr::filter(.data$case) %>%
+    dplyr::select('case_id' = 'id', 'case_age' = 'age_risk_end',
+           'sex', 'race', 'dob') %>%
+    dplyr::left_join(person,
               by=c('sex', 'race'),
               relationship = 'many-to-many') %>%            #Match on sex, race
-    dplyr::filter(case_age >= age_risk_begin,               #Match age
-                  case_age <= age_risk_end,
-                  abs((dob.x - dob.y) / 365.25) <= 5) %>%   #Match DOB
-    mutate(case = (case_id == id),
-           cut_dt = dob.y + case_age*365.25)  %>%
-    select(case_id, id, case, cut_dt) %>%
-    ungroup() %>%
+    dplyr::filter(.data$case_age >= .data$age_risk_begin,               #Match age
+                  .data$case_age <= .data$age_risk_end,
+                  abs((.data$dob.x - .data$dob.y) / 365.25) <= 5) %>%   #Match DOB
+    dplyr::mutate(case = (.data$case_id == .data$id),
+           cut_dt = .data$dob.y + .data$case_age*365.25)  %>%
+    dplyr::select('case_id', 'id', 'case', 'cut_dt') %>%
+    dplyr::ungroup() %>%
     return()
 }

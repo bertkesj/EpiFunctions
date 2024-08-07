@@ -31,7 +31,7 @@ poi_back <- function(data,
                     ss,
                     lin = ~ 1,
                     loglin = ~ 1,
-                    gcis=TRUE){
+                    gcis=FALSE){
   if (!'pdays' %in% colnames(data)) stop("Data missing 'pdays' column")
 
   #################################################################
@@ -52,15 +52,15 @@ poi_back <- function(data,
     data$phi <- exp(hloglin)*(1 + hlin)
 
     n <- data %>%
-      group_by(!!!ss) %>%
-      mutate(logphi = my_log(phi)) %>%
-      summarize(one = sum(observed*logphi),
-                two = sum(observed),
-                three = sum(pdays*phi),
+      dplyr::group_by(!!!ss) %>%
+      dplyr::mutate(logphi = my_log(.data$phi)) %>%
+      dplyr::summarize(one = sum(.data$observed*.data$logphi),
+                two = sum(.data$observed),
+                three = sum(.data$pdays*.data$phi),
                 .groups = 'drop') %>%
-      transmute(ll = one - two*my_log(three)) %>%
-      ungroup() %>%
-      summarize(ll = sum(ll))
+      dplyr::transmute(ll = .data$one - .data$two*my_log(.data$three)) %>%
+      dplyr::ungroup() %>%
+      dplyr::summarize(ll = sum(.data$ll))
 
     return(as.numeric(n[1,1]))
   }
@@ -75,27 +75,27 @@ poi_back <- function(data,
     data$phi <- exp(hloglin)*(1 + hlin)
 
     fp_helper <- function(data) {
-      data %>%
-        group_by(!!!ss) %>%
-        mutate(logphi = my_log(phi)) %>%
-        summarize(one = sum(observed*phi_p/phi),
+      dt <- data %>%
+        dplyr::group_by(!!!ss) %>%
+        dplyr::mutate(logphi = my_log(.data$phi)) %>%
+        dplyr::summarize(one = sum(.data$observed*.data$phi_p/.data$phi),
 
-                  two = sum(observed),
-                  three = sum(pdays*phi_p),
-                  four = sum(pdays*phi),
+                  two = sum(.data$observed),
+                  three = sum(.data$pdays*.data$phi_p),
+                  four = sum(.data$pdays*.data$phi),
                   .groups = 'drop') %>%
-        transmute(ll = (one - two*three/four)) %>%
-        ungroup() %>%
-        dplyr::summarize(x = sum(ll)) %>%
-        `$`(x)
+        dplyr::transmute(ll = (.data$one - .data$two*.data$three/.data$four)) %>%
+        dplyr::ungroup() %>%
+        dplyr::summarize(x = sum(.data$ll))
+      return(dt$x)
     }
-    bbloglin <- map_dbl(asplit(Xloglin, 2),
+    bbloglin <- purrr::map_dbl(asplit(Xloglin, 2),
                         ~ {
                           data$phi_p = as.numeric(.x) * data$phi
                           data %>%
                             fp_helper()
                         })
-    bblin <- map_dbl(asplit(Xlin, 2),
+    bblin <- purrr::map_dbl(asplit(Xlin, 2),
                      ~ {
                        data$phi_p = as.numeric(.x) * exp(hloglin)
                        data %>%
@@ -105,11 +105,11 @@ poi_back <- function(data,
   }
   ##################################################################
   data <- data %>%
-    mutate(observed = if_else(is.na(!!outcomeq), 0, !!outcomeq))
+    dplyr::mutate(observed = dplyr::if_else(is.na(!!outcomeq), 0, !!outcomeq))
 
-  Xloglin <- model.matrix(loglin, data = data) %>%
+  Xloglin <- stats::model.matrix(loglin, data = data) %>%
     `[`(,-1, drop = F)
-  Xlin <- model.matrix(lin, data = data) %>%
+  Xlin <- stats::model.matrix(lin, data = data) %>%
     `[`(,-1, drop = F)
 
   tot <- ncol(Xlin) + ncol(Xloglin)
@@ -119,9 +119,8 @@ poi_back <- function(data,
   # Optimize
   cont <- list(maxit=10000,
                fnscale=-1)
-  o <- optim(b, loglik, fp,
-             Xloglin=Xloglin, Xlin=Xlin,
-             data=data, ss=ss,
+  o <- stats::optim(b, loglik, fp,
+             Xloglin=Xloglin, Xlin=Xlin, data=data, ss=ss,
              control = cont, method="BFGS", hessian=T)#drop method and use default???????
   se <- sqrt(diag(solve(-o$hessian)))
 
@@ -142,10 +141,9 @@ poi_back <- function(data,
     # stopCluster(cl)
     #
 
-    cis <- map(1:(2*length(o$par)),
-               ~ get_CI(., o=o, se=se,
-                        Xloglin=Xloglin, Xlin=Xlin,
-                        ll=loglik, data=data, ss=ss,
+    cis <- purrr::map(1:(2*length(o$par)),
+               ~ get_CI(., o=o, se=se, ll=loglik,
+                        Xloglin=Xloglin, Xlin=Xlin, data=data, ss=ss,
                         verbose = F)) %>%
       unlist()
 
@@ -154,10 +152,9 @@ poi_back <- function(data,
     upper <- cis[2*(1:length(o$par))]
 
   } else if (gcis & length(o$par) == 1){
-    cis <-   map(1:(2*length(o$par)),
-                 ~ get_CI(., o, se=se,
-                          Xloglin=Xloglin, Xlin=Xlin,
-                          ll=loglik, data=data, ss=ss,
+    cis <-   purrr::map(1:(2*length(o$par)),
+                 ~ get_CI(., o, se=se, ll=loglik,
+                          Xloglin=Xloglin, Xlin=Xlin, data=data, ss=ss,
                           verbose = F))
     lower <- cis[[1]]
     upper <- cis[[2]]
@@ -168,7 +165,7 @@ poi_back <- function(data,
   }
 
 
-  out <- tibble(var = c(colnames(Xloglin), colnames(Xlin)),
+  out <- tibble::tibble(var = c(colnames(Xloglin), colnames(Xlin)),
                 est = o$par,
                 se = se,
                 lower = lower,
