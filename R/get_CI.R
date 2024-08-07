@@ -5,19 +5,16 @@
 #' @param .i integer. If even, gets the upper limit of the .i/2 parameter.
 #' If odd, the lower limit of the .i/2 + .5 parameter.
 #' @param o an optim object. The result of running optim().
-#' @param data the data the optim function was run on.
-#' @param Xloglin the log-linear design matrix.
-#' @param Xlin the linear design matrix.
 #' @param ll the likelihood function.
 #' @param se a vector of the standard errors. Can be all NAs if not calculated.
-#' @param ss a quosure
+#' @param ... arguments passed to ll for optimization
 #' @param alpha the degree of confidence (i.e. alpha = .95 returns 95% CIs)
 #' @param verbose boolean (TRUE/FALSE). Should each step be presented.
 #'
 #' @return
 #' @noRd
 #'
-get_CI <- function(.i, o, data, Xloglin, Xlin, ll, se, ss=quos(), alpha=0.95, verbose=T) {
+get_CI <- function(.i, o, ll, se, ..., alpha=0.95, verbose=T) {
   #library(tidyverse)
   #library(numDeriv)
 
@@ -25,12 +22,12 @@ get_CI <- function(.i, o, data, Xloglin, Xlin, ll, se, ss=quos(), alpha=0.95, ve
   #f3 is a wrapper around the log-likelihood (ll)
   error_fail <- function(e) return('Fail')
 
-  f3 <- function(x, value, vi, data, Xloglin, Xlin, ss=quos(), ll) {
+  f3 <- function(x, value, vi, ..., ll) {
     expn <- length(x) + 1
     b <- rep(NA, expn)
     b[-vi] <- x
     b[vi] <- value
-    return(ll(b, data=data, Xloglin=Xloglin, Xlin=Xlin, ss=quos()))
+    return(ll(b, ...))
   }
 
   #Define variables
@@ -56,10 +53,7 @@ get_CI <- function(.i, o, data, Xloglin, Xlin, ll, se, ss=quos(), alpha=0.95, ve
     if (length(o$par) == 1){
 
       ol <- tryCatch(expr = {ll(value,
-                                data=data,
-                                Xloglin=Xloglin,
-                                Xlin=Xlin,
-                                ss=ss)},
+                                ...)},
                      error = error_fail)
       if (is.nan(ol)) ol <- 'Fail'
       failed <- ol == 'Fail'
@@ -70,8 +64,8 @@ get_CI <- function(.i, o, data, Xloglin, Xlin, ll, se, ss=quos(), alpha=0.95, ve
       cont <- list(maxit = 10000, fnscale=-1)
       ol <- tryCatch(expr = {optim(pmax(lastpar, 0), f3,
                                    value=value, vi=vi,
-                                   data=data, Xloglin=Xloglin, Xlin=Xlin,
-                                   ll=ll, ss=ss,
+                                   ...,
+                                   ll=ll,
                                    control = cont, method = "BFGS")},
                      error = error_fail)
       failed <- sum(ol == 'Fail') == 1

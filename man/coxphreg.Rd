@@ -22,10 +22,10 @@ be calcualted.}
 \value{
 A list containing:
 \itemize{
-\item output: A tibble containing paratemter estimates (est), standard errors (se), and lower/upper CIs,
-\item neg2LL_diff -2 * log-likelihood,
-\item AIC: neg2LL_diff + 2 * number of parameters,
-\item hessian: Hessian matrix o$hessian
+\item output:      A tibble containing paratemter estimates (est), standard errors (se), and lower/upper CIs,
+\item neg2LL_diff: -2 * log-likelihood,
+\item AIC:         neg2LL_diff + 2 * number of parameters,
+\item hessian:     Hessian matrix o$hessian
 }
 }
 \description{

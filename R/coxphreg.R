@@ -16,78 +16,81 @@
 #'
 #' @return
 #' A list containing:
-#' *  output: A tibble containing paratemter estimates (est), standard errors (se), and lower/upper CIs,
-#' *  neg2LL_diff -2 * log-likelihood,
-#' *  AIC: neg2LL_diff + 2 * number of parameters,
-#' *  hessian: Hessian matrix o$hessian
+#' *  output:      A tibble containing paratemter estimates (est), standard errors (se), and lower/upper CIs,
+#' *  neg2LL_diff: -2 * log-likelihood,
+#' *  AIC:         neg2LL_diff + 2 * number of parameters,
+#' *  hessian:     Hessian matrix o$hessian
 #'
 #' @export
 #'
+#' @importFrom magrittr %>%
+#'
 #' @examples
 coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
-  ll <- function(b, data, Xloglin, Xlin, ss=quos()) {
+
+  ll <- function(b, data, Xloglin, Xlin) {
     hloglin <- rep(0, nrow(data))
     hlin <- rep(0, nrow(data))
     if (ncol(Xloglin) != 0) hloglin <- Xloglin %*% b[1:ncol(Xloglin)]
     if (ncol(Xlin) != 0) hlin <-  Xlin %*% b[(ncol(Xloglin) + 1):tot]
-    data$h <- exp(hloglin)*(1 + hlin)
 
     ll <- data %>%
-      group_by(case_id) %>%
+      dplyr::mutate(h = exp(hloglin)*(1 + hlin))
+      dplyr::group_by('case_id') %>%
       dplyr::summarize(den = sum(h),
-                       num = sum(case*h)) %>%
-      mutate(L = num / den) %>%
+                       num = sum(.data$case*h)) %>%
+      dplyr::mutate(L = num / den) %>%
       dplyr::summarize(x = sum(log(L)))
 
     return(ll$x)
   }
-  g <- function(b, data, Xloglin, Xlin, ss=quos()) {
-    if (ncol(Xloglin) != 0) hloglin <- exp(as.numeric(Xloglin %*% b[1:ncol(Xloglin)])) else hloglin <- rep(1, nrow(data))
-    if (ncol(Xlin) != 0) hlin <-  (1 + as.numeric(Xlin %*% b[(ncol(Xloglin) + 1):tot])) else hlin <- rep(1, nrow(data))
-    data$hloglin <- hloglin
-    data$hlin <- hlin
+  g <- function(b, data, Xloglin, Xlin) {
+    hloglin <- rep(1, nrow(data))
+    hlin <- rep(1, nrow(data))
+    if (ncol(Xloglin) != 0) hloglin <- exp(as.numeric(Xloglin %*% b[1:ncol(Xloglin)]))
+    if (ncol(Xlin) != 0) hlin <-  (1 + as.numeric(Xlin %*% b[(ncol(Xloglin) + 1):tot]))
 
-    bbloglin <- map_dbl(asplit(Xloglin, 2),
+    bbloglin <- purrr::map_dbl(asplit(Xloglin, 2),
                         ~ {
                           data$x <- as.numeric(.x)
                           data %>%
-                            group_by(case_id) %>%
-                            mutate(h = hloglin*hlin) %>%
+                            dplyr::group_by(case_id) %>%
+                            dplyr::mutate(h = hloglin*hlin) %>%
                             dplyr::summarize(den = sum(h),
                                              num = sum(h*x),
                                              cx = sum(case*x),
                                              .groups = 'drop') %>%
-                            mutate(L = cx - num/den) %>%
+                            dplyr::mutate(L = cx - num/den) %>%
                             dplyr::summarize(x = sum(L)) %>%
                             `$`(x)
                         })
-    bblin <- map_dbl(asplit(Xlin, 2),
+    bblin <- purrr::map_dbl(asplit(Xlin, 2),
                      ~ {
                        data$x <- as.numeric(.x)
                        data %>%
-                         group_by(case_id) %>%
+                         dplyr::group_by(case_id) %>%
                          dplyr::summarize(den = sum(hloglin*hlin),
                                           num = sum(hloglin*x),
                                           cxn = sum(case*x),
                                           cxd = sum(case*hlin),
                                           .groups = 'drop') %>%
-                         mutate(L = cxn/cxd - num/den) %>%
+                         dplyr::mutate(L = cxn/cxd - num/den) %>%
                          dplyr::summarize(x = sum(L)) %>%
                          `$`(x)
                      })
     return(c(bbloglin, bblin))
   }
 
-  Xloglin <- model.matrix(loglin, data = data) %>%
+  Xloglin <- stats::model.matrix(loglin, data = data) %>%
     `[`(,-1, drop = F)
-  Xlin <- model.matrix(lin, data = data) %>%
+  Xlin <- stats::model.matrix(lin, data = data) %>%
     `[`(,-1, drop = F)
 
 
   tot <- ncol(Xlin) + ncol(Xloglin)
   b <- rep(0, tot)
 
-  o <- optim(b, ll, gr=g,
+  o <- stats::optim(b, ll, gr=g,
              data=data, Xloglin=Xloglin, Xlin=Xlin,
              hessian = TRUE, method = "BFGS",
              control=list(fnscale=-1))#
@@ -108,10 +111,10 @@ coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
     # stopCluster(cl)
     #
 
-    cis <- map(1:(2*length(o$par)),
+    cis <- purrr::map(1:(2*length(o$par)),
                ~ get_CI(., o=o, se=se,
-                        Xloglin=Xloglin, Xlin=Xlin,
-                        ll=ll, data=data,
+                        Xloglin=Xloglin, Xlin=Xlin, data=data,
+                        ll=ll,
                         verbose = F)) %>%
       unlist()
 
@@ -120,10 +123,10 @@ coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
     upper <- cis[2*(1:length(o$par))]
 
   } else if (gcis & length(o$par) == 1){
-    cis <-   map(1:(2*length(o$par)),
+    cis <-   purrr::map(1:(2*length(o$par)),
                  ~ get_CI(., o, se=se,
-                          Xloglin=Xloglin, Xlin=Xlin,
-                          ll=ll, data=data,
+                          Xloglin=Xloglin, Xlin=Xlin, data=data,
+                          ll=ll,
                           verbose = F))
     lower <- cis[[1]]
     upper <- cis[[2]]
@@ -133,12 +136,12 @@ coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
     upper <- NA
   }
 
-  out <- tibble(var = c(colnames(Xloglin), colnames(Xlin)),
+  out <- dplyr::tibble(var = c(colnames(Xloglin), colnames(Xlin)),
                 est = o$par,
                 se = se,
                 lower = lower,
                 upper = upper,
-                gradient = fp(o$par, Xloglin, Xlin, data, ss))
+                gradient = g(o$par, Xloglin, Xlin, data, ss))
   return(list(output=out,
               neg2LL = - 2*o$value,
               AIC = - 2*o$value + 2*tot,
