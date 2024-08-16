@@ -4,7 +4,7 @@
 \alias{poi_back}
 \title{Background Stratified Poisson Regression}
 \usage{
-poi_back(data, outcomeq, ss, lin = ~1, loglin = ~1, gcis = TRUE)
+poi_back(data, outcomeq, ss, lin = ~1, loglin = ~1, gcis = FALSE)
 }
 \arguments{
 \item{data}{A tibble/data.frame like object containing the stratified person-time.

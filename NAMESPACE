@@ -3,6 +3,7 @@
 export("%>%")
 export(coxphreg)
 export(cum_exp)
+export(get_table_rapid)
 export(gt_rs)
 export(poi_back)
 importFrom(magrittr,"%>%")
