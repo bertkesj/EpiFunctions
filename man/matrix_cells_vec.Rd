@@ -9,9 +9,9 @@ matrix_cells_vec(data, time_break, matrix_obj)
 \arguments{
 \item{data}{data from get_table_rapid()}
 
-\item{time_break}{number of years definedy by user}
+\item{time_break}{number of years defined by user}
 
-\item{matrix_obj}{a matrix like object}
+\item{matrix_obj}{data.frame of total person years. Arranged by years (columns) and age (rows)}
 }
 \description{
 Helpers for the \code{get_table_rapid()} function
