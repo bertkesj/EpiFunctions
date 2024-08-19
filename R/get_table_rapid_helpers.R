@@ -1,12 +1,10 @@
 #' Helpers for the `get_table_rapid()` function
 #'
 #' @param data data from get_table_rapid()
-#' @param time_break number of years definedy by user
-#' @param matrix_obj a matrix like object
+#' @param time_break number of years defined by user
+#' @param matrix_obj data.frame of total person years. Arranged by years (columns) and age (rows)
 #'
 matrix_cells_vec <- function(data, time_break, matrix_obj){
-
-  ##update progress bar
 
   # Count the number of person-years
   cmin <- min(as.numeric(colnames(matrix_obj)))
@@ -68,23 +66,23 @@ matrix_cells_vec <- function(data, time_break, matrix_obj){
 
 #' list_helper
 #'
-#' @param s1
-#' @param s2
-#' @param l1
-#' @param l2
-#' @param first
-#' @param odd
-#' @param even
-#' @param last
-#' @param even_last
-#' @param count0start
-#' @param count0starteven
-#' @param count0lasteven
-#' @param count0lastodd
-#' @param ov
-#' @param ev
-#' @param start1
-#' @param stop1
+#' @param s1 start col
+#' @param s2 start row
+#' @param l1 end col
+#' @param l2 end row
+#' @param first first cell person years
+#' @param odd odd count cell person years
+#' @param even even count cell person years
+#' @param last last cell person years
+#' @param even_last bool, the last observation on an even count cell
+#' @param count0start starting col or row
+#' @param count0starteven offset if starting count cell is even
+#' @param count0lasteven offset if last count cell is even
+#' @param count0lastodd offset if last count cell is odd
+#' @param ov offset to determine the cell count order
+#' @param ev offset if starting from the first cell
+#' @param start1 first year of follow-up
+#' @param stop1 last year of follow-up
 #'
 #'
 list_helper <- function(s1,s2,l1,l2, first, odd, even, last, even_last,
@@ -115,9 +113,9 @@ list_helper <- function(s1,s2,l1,l2, first, odd, even, last, even_last,
 
 #' matrix_counts_vec
 #'
-#' @param data
-#' @param time_break
-#' @param matrix_obj
+#' @param data data from get_table_rapid()
+#' @param time_break number of years defined by user
+#' @param matrix_obj data.frame of total observed events. Arranged by years (columns) and age (rows)
 #'
 matrix_counts_vec <- function(data, time_break, matrix_obj){
 
@@ -184,23 +182,23 @@ matrix_counts_vec <- function(data, time_break, matrix_obj){
 
 #' list_count_helper
 #'
-#' @param s1
-#' @param s2
-#' @param l1
-#' @param l2
-#' @param first
-#' @param odd
-#' @param even
-#' @param last
-#' @param even_last
-#' @param count0start
-#' @param count0starteven
-#' @param count0lasteven
-#' @param count0lastodd
-#' @param ov
-#' @param ev
-#' @param start1
-#' @param stop1
+#' @param s1 start col
+#' @param s2 start row
+#' @param l1 end col
+#' @param l2 end row
+#' @param first first cell events
+#' @param odd odds cell counts events
+#' @param even even cell counts events
+#' @param last last cell events
+#' @param even_last bool, is the last cell even
+#' @param count0start starting col or row
+#' @param count0starteven offset if starting count cell is even
+#' @param count0lasteven offset if last count cell is even
+#' @param count0lastodd offset if last count cell is odd
+#' @param ov offset to determine the cell count order
+#' @param ev offset if starting from the first cell
+#' @param start1 first year of follow-up
+#' @param stop1 last year of follow-up
 #'
 list_count_helper <- function(s1,s2,l1,l2, first, odd, even, last, even_last,
                               count0start,count0starteven,
@@ -230,13 +228,13 @@ list_count_helper <- function(s1,s2,l1,l2, first, odd, even, last, even_last,
 
 #' matrix_helper
 #'
-#' @param eos1
-#' @param eos2
-#' @param oos1
-#' @param oos2
-#' @param even_list
-#' @param odd_list
-#' @param matrix_obj
+#' @param eos1 offset cols, odd data
+#' @param eos2 offset rows, even data
+#' @param oos1 offset cols, odd data
+#' @param oos2 offset rows, odd data
+#' @param even_list even cells of person-years or events count
+#' @param odd_list odd cells of person-years or events count
+#' @param matrix_obj person-years or events count data.frame. Arranged by years (columns) and age (rows)
 #'
 matrix_helper <- function(eos1, eos2,oos1, oos2,even_list, odd_list, matrix_obj){
   matrix_obj[row(matrix_obj) +eos2 == col(matrix_obj) + eos1] <-
@@ -250,7 +248,7 @@ matrix_helper <- function(eos1, eos2,oos1, oos2,even_list, odd_list, matrix_obj)
 
 #' combine_matrix
 #'
-#' @param data
+#' @param data data from matrix_counts_vec() and matrix_cells_vec()
 #'
 combine_matrix <- function(data){
   # Convert matrix to a long-form data table
