@@ -17,3 +17,5 @@ Imports:
     purrr,
     rlang,
     tibble
+Depends: 
+    R (>= 2.10)
