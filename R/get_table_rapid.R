@@ -36,12 +36,12 @@ get_table_rapid <- function(persondf,
   data = persondf
   stratify = append(c("gender", "race"), strata)
   time_break = break_yr
-  ymin = min(year(data$pybegin))
-  ymax = max(year(data$dlo))
+  ymin = min(lubridate::year(data$pybegin))
+  ymax = max(lubridate::year(data$dlo))
   amin = as.numeric(min(difftime(data$pybegin,
-                                 data$dob, unit = "days")/365.25))
+                                 data$dob, units = "days")/365.25))
   amax = as.numeric(max(difftime(data$dlo,
-                                 data$dob, unit = "days")/365.25))
+                                 data$dob, units = "days")/365.25))
   # Create empty matrix
   col_names <- seq(floor(ymin/time_break)*time_break, floor(ymax/time_break)*time_break, time_break)
   row_names <- seq(floor(amin/time_break)*time_break, floor(amax/time_break)*time_break, time_break)
@@ -50,11 +50,11 @@ get_table_rapid <- function(persondf,
   colnames(matrix_obj) <- col_names
   rownames(matrix_obj) <- row_names
   data$start2 <-  as.numeric(difftime(data$pybegin,
-                                      data$dob, unit = "days")/365.25) + (1/365.25)
+                                      data$dob, units = "days")/365.25) + (1/365.25)
   data$stop2 <-  as.numeric(difftime(data$dlo,
-                                     data$dob, unit = "days")/365.25) + (1/365.25)
-  data$start1 <- decimal_date(data$pybegin)
-  data$stop1 <- decimal_date(data$dlo)
+                                     data$dob, units = "days")/365.25) + (1/365.25)
+  data$start1 <- lubridate::decimal_date(data$pybegin)
+  data$stop1 <- lubridate::decimal_date(data$dlo)
 
   data$start1 <- ifelse(data$start1%%1!=0,data$start1,data$start1+0.000001)
   data$start2 <- ifelse(data$start2%%1!=0,data$start2,data$start2+0.000001)
@@ -72,58 +72,58 @@ get_table_rapid <- function(persondf,
   data$odd <- time_break - abs(data$dura1 - data$dura2)
 
   data <- data %>%
-    mutate(code = paste0(code,"_", sprintf("%02d", rev)))
+    dplyr::mutate(code = paste0(.data$code,"_", sprintf("%02d", rev)))
 
   # Stratify the data by the selected variables
   data_strat <- data %>%
-    group_by(across(all_of(stratify))) %>%
-    group_split()
+    dplyr::group_by(dplyr::across(dplyr::all_of(stratify))) %>%
+    dplyr::group_split()
 
   # Stratify the data by the selected variables
   data_output <- data %>%
-    filter(!is.na(rev)) %>%
-    group_by(code, across(all_of(stratify))) %>%
-    group_split()
+    dplyr::filter(!is.na(rev)) %>%
+    dplyr::group_by(.data$code, dplyr::across(dplyr::all_of(stratify))) %>%
+    dplyr::group_split()
 
 
   # Assign the person-years to the associated variable combination
   print("Step 1/2 count person-time")
-  py_mat <- pblapply(data_strat, function(x){matrix_cells_vec(x, time_break, matrix_obj)})
+  py_mat <- pbapply::pblapply(data_strat, function(x){matrix_cells_vec(x, time_break, matrix_obj)})
 
   print("Step 2/2 count events")
   # Assign the case counts to the associated variable combination
-  output_mat <- pblapply(data_output, function(x){matrix_counts_vec(x, time_break, matrix_obj)})
+  output_mat <- pbapply::pblapply(data_output, function(x){matrix_counts_vec(x, time_break, matrix_obj)})
 
   # Get the stratification variable names
   data_names <- suppressMessages(data %>%
-                                   group_by(across(all_of(stratify))) %>%
-                                   summarise())
+                                   dplyr::group_by(dplyr::across(dplyr::all_of(stratify))) %>%
+                                   dplyr::summarise())
 
   strat_names <- suppressMessages(data %>%
-                                    filter(!is.na(rev)) %>%
-                                    group_by(code, across(all_of(stratify))) %>%
-                                    summarise())
+                                    dplyr::filter(!is.na(rev)) %>%
+                                    dplyr::group_by(.data$code, dplyr::across(dplyr::all_of(stratify))) %>%
+                                    dplyr::summarise())
 
   ## Combine person-year tables
   py_mat_comb <-  lapply(py_mat, combine_matrix)
   py_mat_comb <- Map(cbind, py_mat_comb,
                      split(data_names, 1:nrow(data_names)))
-  py_mat_comb <- rbindlist(py_mat_comb)
+  py_mat_comb <- data.table::rbindlist(py_mat_comb)
   py_mat_comb <- py_mat_comb[py_mat_comb$value !=0,]
 
   output_mat_comb <-  lapply(output_mat, combine_matrix)
   output_mat_comb <- Map(cbind, output_mat_comb,
                          split(strat_names, 1:nrow(strat_names)))
-  output_mat_comb <- rbindlist(output_mat_comb)
+  output_mat_comb <- data.table::rbindlist(output_mat_comb)
   output_mat_comb <- output_mat_comb[!is.na(code),]
-  output_mat_comb <- dcast(output_mat_comb, eval(paste0("Var1+Var2+",
+  output_mat_comb <- data.table::dcast(output_mat_comb, eval(paste0("Var1+Var2+",
                                                         paste0(stratify, collapse = "+"),
                                                         "~ code", collapse = " ") ),
                            value.var = "value", fun.aggregate = sum)
   # Clean output
 
   output_combined <- output_mat_comb %>%
-    power_full_join(py_mat_comb, by = c("Var1","Var2",stratify))
+    powerjoin::power_full_join(py_mat_comb, by = c("Var1","Var2",stratify))
   output_combined <- output_combined[!is.na(output_combined$value),]
   output_combined[is.na(output_combined)] <- 0
   colnames(output_combined)[1:2] <- c("ageCat","CPCat")
@@ -134,15 +134,15 @@ get_table_rapid <- function(persondf,
   output_combined$CPCat <- paste0("[", output_combined$CPCat,
                                   ",", output_combined$CPCat + time_break, ")")
 
-  colnames(output_combined)[(3+length(stratify)):(ncol(output_combined)-1)] <-
-    paste0("_o", rateobj$mapping$minor[match(
-      colnames(output_combined)[(3+length(stratify)):(ncol(output_combined)-1)],
-      paste0(rateobj$mapping$code, "_", rateobj$mapping$rev))])
+  # colnames(output_combined)[(3+length(stratify)):(ncol(output_combined)-1)] <-
+  #   paste0("_o", rateobj$mapping$minor[match(
+  #     colnames(output_combined)[(3+length(stratify)):(ncol(output_combined)-1)],
+  #     paste0(rateobj$mapping$code, "_", rateobj$mapping$rev))])
   output_combined$pdays <- round(output_combined$value *365.25, 2)
   output_combined <- output_combined[,!c("value")]
 
   output_combined <- output_combined %>%
-    relocate(pdays, .after = stratify[length(stratify)])
+    dplyr::relocate(.data$pdays, .after = stratify[length(stratify)])
 
   return(output_combined)
 }

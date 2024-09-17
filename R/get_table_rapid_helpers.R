@@ -253,7 +253,7 @@ matrix_helper <- function(eos1, eos2,oos1, oos2,even_list, odd_list, matrix_obj)
 combine_matrix <- function(data){
   # Convert matrix to a long-form data table
   data_dt <- cbind(
-    as.data.table(expand.grid(rownames(data), colnames(data))
+    data.table::as.data.table(expand.grid(rownames(data), colnames(data))
     ), value = as.vector(data))
 
   return(data_dt)
