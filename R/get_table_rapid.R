@@ -15,7 +15,7 @@
 #' * dob (date),
 #' * pybegin (date),
 #' * dlo	(date),
-#' * code (character: identifying outcomes of interest)
+#' * outcome (character/numeric: identifying outcomes of interest)
 #'
 #' @param persondf data.frame like object containing one row per person with the required demographic information
 #' @param strata character vector identify additional variables (found in persondf) to stratify
@@ -28,6 +28,19 @@
 #' @export
 #'
 #' @examples
+#' # Import data, convert characters to dates
+#' # define new variable called outcome based on case definition
+#' library(dplyr)
+#' example_person <- example_person %>%
+#'   mutate(dob = as.Date(dob),
+#'          pybegin = as.Date(pybegin),
+#'          dlo = as.Date(dlo),
+#'
+#'          outcome = if_else(lung_cancer == 'TRUE',
+#'                            1,
+#'                            NA))
+#' py_table <- get_table_rapid(persondf=example_person)
+#'
 get_table_rapid <- function(persondf,
                             strata = c(),
                             break_yr=5){
@@ -71,9 +84,6 @@ get_table_rapid <- function(persondf,
   data$even <- abs(data$dura1 - data$dura2)
   data$odd <- time_break - abs(data$dura1 - data$dura2)
 
-  data <- data %>%
-    dplyr::mutate(code = paste0(.data$code,"_", sprintf("%02d", rev)))
-
   # Stratify the data by the selected variables
   data_strat <- data %>%
     dplyr::group_by(dplyr::across(dplyr::all_of(stratify))) %>%
@@ -81,8 +91,8 @@ get_table_rapid <- function(persondf,
 
   # Stratify the data by the selected variables
   data_output <- data %>%
-    dplyr::filter(!is.na(rev)) %>%
-    dplyr::group_by(.data$code, dplyr::across(dplyr::all_of(stratify))) %>%
+    dplyr::filter(!is.na(.data$outcome)) %>%
+    dplyr::group_by(.data$outcome, dplyr::across(dplyr::all_of(stratify))) %>%
     dplyr::group_split()
 
 
@@ -100,8 +110,8 @@ get_table_rapid <- function(persondf,
                                    dplyr::summarise())
 
   strat_names <- suppressMessages(data %>%
-                                    dplyr::filter(!is.na(rev)) %>%
-                                    dplyr::group_by(.data$code, dplyr::across(dplyr::all_of(stratify))) %>%
+                                    dplyr::filter(!is.na(.data$outcome)) %>%
+                                    dplyr::group_by(.data$outcome, dplyr::across(dplyr::all_of(stratify))) %>%
                                     dplyr::summarise())
 
   ## Combine person-year tables
@@ -115,10 +125,10 @@ get_table_rapid <- function(persondf,
   output_mat_comb <- Map(cbind, output_mat_comb,
                          split(strat_names, 1:nrow(strat_names)))
   output_mat_comb <- data.table::rbindlist(output_mat_comb)
-  output_mat_comb <- output_mat_comb[!is.na(code),]
+  output_mat_comb <- stats::na.omit(output_mat_comb, cols=seq_along('outcome')) #is this stats::???
   output_mat_comb <- data.table::dcast(output_mat_comb, eval(paste0("Var1+Var2+",
                                                         paste0(stratify, collapse = "+"),
-                                                        "~ code", collapse = " ") ),
+                                                        "~ outcome", collapse = " ") ),
                            value.var = "value", fun.aggregate = sum)
   # Clean output
 
@@ -139,10 +149,14 @@ get_table_rapid <- function(persondf,
   #     colnames(output_combined)[(3+length(stratify)):(ncol(output_combined)-1)],
   #     paste0(rateobj$mapping$code, "_", rateobj$mapping$rev))])
   output_combined$pdays <- round(output_combined$value *365.25, 2)
-  output_combined <- output_combined[,!c("value")]
+
+  # Drop value column
+  cols <- colnames(output_combined)
+  cols <- cols[cols != 'value']
+  output_combined <- output_combined[,cols]
 
   output_combined <- output_combined %>%
-    dplyr::relocate(.data$pdays, .after = stratify[length(stratify)])
+    dplyr::relocate('pdays', .after = stratify[length(stratify)])
 
   return(output_combined)
 }

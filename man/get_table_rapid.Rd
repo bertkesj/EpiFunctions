@@ -36,6 +36,21 @@ The persondf tibble must contain the variables:
 \item dob (date),
 \item pybegin (date),
 \item dlo	(date),
-\item code (character: identifying outcomes of interest)
+\item outcome (character/numeric: identifying outcomes of interest)
 }
+}
+\examples{
+# Import data, convert characters to dates
+# define new variable called outcome based on case definition
+library(dplyr)
+example_person <- example_person \%>\%
+  mutate(dob = as.Date(dob),
+         pybegin = as.Date(pybegin),
+         dlo = as.Date(dlo),
+
+         outcome = if_else(lung_cancer == 'TRUE',
+                           1,
+                           NA))
+py_table <- get_table_rapid(persondf=example_person)
+
 }
