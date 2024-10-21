@@ -4,7 +4,7 @@
 \alias{coxphreg}
 \title{Cox Proportional Regression}
 \usage{
-coxphreg(data, lin = ~1, loglin = ~1, gcis = F)
+coxphreg(data, lin = ~1, loglin = ~1, gcis = F, alpha = 0.95)
 }
 \arguments{
 \item{data}{A tibble/data.frame like object containing risk-sets. Variables
@@ -17,7 +17,10 @@ hazard function}
 section of hazard function}
 
 \item{gcis}{A boolean (TRUE/FALSE) indicating if profile-likelihood CIs should
-be calcualted.}
+be calculated.}
+
+\item{alpha}{A numeric between 0 and 1, indicating the level of significance
+of the profile likelihood confidence intervals ouptputed when gcis = TRUE.}
 }
 \value{
 A list containing:
@@ -25,7 +28,7 @@ A list containing:
 \item output:      A tibble containing paratemter estimates (est), standard errors (se), and lower/upper CIs,
 \item neg2LL_diff: -2 * log-likelihood,
 \item AIC:         neg2LL_diff + 2 * number of parameters,
-\item hessian:     Hessian matrix o$hessian
+\item hessian:     Hessian matrix
 }
 }
 \description{
@@ -33,4 +36,40 @@ Performs Cox proportional regression on a tibble of risk-sets
 that were outputted from \code{get_rs()} function. Both a linear piece and
 log-linear piece of the hazard function can be specified. The hazard function
 has the general form: h(t) = h0(t) * exp(loglin) * (1 + lin).
+}
+\examples{
+
+library(dplyr)
+
+# Typical usage is to create a risk-set, add a time-dependent exposure,
+# and then perform Cox regression.
+risk_sets <- example_person \%>\%
+  mutate(dob = as.Date(dob),
+         pybegin= as.Date(pybegin),
+         dlo = as.Date(dlo),
+
+         sex = gender,
+
+         case = (lung_cancer == 'TRUE')) \%>\%
+  gt_rs()
+
+# Add time dependent cumulative exposure, 0 yr lag and 10 yr lag
+risk_sets <- example_history \%>\%
+  mutate(begin_dt = as.Date(begin_dt),
+         end_dt= as.Date(end_dt),
+
+         daily_exposure = as.numeric(daily_exposure)) \%>\%
+  right_join(risk_sets,
+             by='id',
+             relationship = 'many-to-many') \%>\%
+  mutate(cumulative_exposure_lag0 = cum_exp(daily_exposure, begin_dt, end_dt, cut_dt, 0),
+         cumulative_exposure_lag10 = cum_exp(daily_exposure, begin_dt, end_dt, cut_dt, 10)) \%>\%
+  group_by(case_id, id, case, cut_dt) \%>\%
+  dplyr::summarize(cumulative_exposure_lag0 = sum(cumulative_exposure_lag0),
+                   cumulative_exposure_lag10 = sum(cumulative_exposure_lag10),
+                   .groups='drop')
+
+# Perform Cox-regression
+coxphreg(risk_sets,
+         loglin = ~ scale(cumulative_exposure_lag10, scale = 100000))
 }

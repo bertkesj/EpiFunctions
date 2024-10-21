@@ -10,7 +10,7 @@
 #'
 #' The persondf tibble must contain the variables:
 #' * id,
-#' * gender (character: 'M'/'F'),
+#' * sex (character: 'M'/'F'),
 #' * race (character: 'W'/'N'),
 #' * dob (date),
 #' * pybegin (date),
@@ -36,6 +36,8 @@
 #'          pybegin = as.Date(pybegin),
 #'          dlo = as.Date(dlo),
 #'
+#'          sex = gender,
+#'
 #'          outcome = if_else(lung_cancer == 'TRUE',
 #'                            1,
 #'                            NA))
@@ -47,7 +49,7 @@ get_table_rapid <- function(persondf,
 
   # Define helper values
   data = persondf
-  stratify = append(c("gender", "race"), strata)
+  stratify = append(c("sex", "race"), strata)
   time_break = break_yr
   ymin = min(lubridate::year(data$pybegin))
   ymax = max(lubridate::year(data$dlo))

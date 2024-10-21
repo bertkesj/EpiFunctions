@@ -31,7 +31,7 @@ calendar-period to speed up computation time.
 The persondf tibble must contain the variables:
 \itemize{
 \item id,
-\item gender (character: 'M'/'F'),
+\item sex (character: 'M'/'F'),
 \item race (character: 'W'/'N'),
 \item dob (date),
 \item pybegin (date),
@@ -47,6 +47,8 @@ example_person <- example_person \%>\%
   mutate(dob = as.Date(dob),
          pybegin = as.Date(pybegin),
          dlo = as.Date(dlo),
+
+         sex = gender,
 
          outcome = if_else(lung_cancer == 'TRUE',
                            1,

@@ -30,3 +30,17 @@ The person tibble must contain the variables:
 \item case (boolean: TRUE/FALSE)
 }
 }
+\examples{
+library(dplyr)
+risk_sets <- example_person \%>\%
+  mutate(dob = as.Date(dob),
+         pybegin= as.Date(pybegin),
+         dlo = as.Date(dlo),
+
+         sex = gender,
+
+         case = (lung_cancer == 'TRUE')) \%>\%
+  gt_rs()
+
+
+}

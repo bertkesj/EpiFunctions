@@ -3,7 +3,7 @@
 #' @param data data from get_table_rapid()
 #' @param time_break number of years defined by user
 #' @param matrix_obj data.frame of total person years. Arranged by years (columns) and age (rows)
-#'
+#' @noRd
 matrix_cells_vec <- function(data, time_break, matrix_obj){
 
   # Count the number of person-years
@@ -84,7 +84,7 @@ matrix_cells_vec <- function(data, time_break, matrix_obj){
 #' @param start1 first year of follow-up
 #' @param stop1 last year of follow-up
 #'
-#'
+#' @noRd
 list_helper <- function(s1,s2,l1,l2, first, odd, even, last, even_last,
                         count0start,count0starteven,
                         count0lasteven,count0lastodd,
@@ -117,6 +117,7 @@ list_helper <- function(s1,s2,l1,l2, first, odd, even, last, even_last,
 #' @param time_break number of years defined by user
 #' @param matrix_obj data.frame of total observed events. Arranged by years (columns) and age (rows)
 #'
+#' @noRd
 matrix_counts_vec <- function(data, time_break, matrix_obj){
 
   # Count the number of observed cases
@@ -200,6 +201,7 @@ matrix_counts_vec <- function(data, time_break, matrix_obj){
 #' @param start1 first year of follow-up
 #' @param stop1 last year of follow-up
 #'
+#' @noRd
 list_count_helper <- function(s1,s2,l1,l2, first, odd, even, last, even_last,
                               count0start,count0starteven,
                               count0lasteven,count0lastodd,
@@ -236,6 +238,7 @@ list_count_helper <- function(s1,s2,l1,l2, first, odd, even, last, even_last,
 #' @param odd_list odd cells of person-years or events count
 #' @param matrix_obj person-years or events count data.frame. Arranged by years (columns) and age (rows)
 #'
+#' @noRd
 matrix_helper <- function(eos1, eos2,oos1, oos2,even_list, odd_list, matrix_obj){
   matrix_obj[row(matrix_obj) +eos2 == col(matrix_obj) + eos1] <-
     matrix_obj[row(matrix_obj) +eos2 == col(matrix_obj) + eos1] + even_list
@@ -250,6 +253,7 @@ matrix_helper <- function(eos1, eos2,oos1, oos2,even_list, odd_list, matrix_obj)
 #'
 #' @param data data from matrix_counts_vec() and matrix_cells_vec()
 #'
+#' @noRd
 combine_matrix <- function(data){
   # Convert matrix to a long-form data table
   data_dt <- cbind(

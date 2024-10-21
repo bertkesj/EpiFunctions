@@ -11,10 +11,10 @@
 #' @param alpha the degree of confidence (i.e. alpha = .95 returns 95% CIs)
 #' @param verbose boolean (TRUE/FALSE). Should each step be presented.
 #'
-#' @return
+#'
 #' @noRd
 #'
-get_CI <- function(.i, o, ll, se, ..., alpha=0.95, verbose=T) {
+get_CI <- function(.i, o, ll, se, alpha, ..., verbose=T) {
   #library(tidyverse)
   #library(numDeriv)
 

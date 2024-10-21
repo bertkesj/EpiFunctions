@@ -26,6 +26,31 @@
 #' @export
 #'
 #' @examples
+#'
+#' library(dplyr)
+#'
+#' # Stratify person file.
+#' # Automatically stratifies by race, sex, age and calendar period.
+#' py_table <- example_person %>%
+#'   mutate(dob = as.Date(dob),
+#'          pybegin= as.Date(pybegin),
+#'          dlo = as.Date(dlo),
+#'
+#'          sex = gender,
+#'
+#'          outcome = if_else(lung_cancer == 'TRUE',
+#'                            1,
+#'                            NA)) %>%
+#'   get_table_rapid(break_yr = 5)
+#'
+#' # Background stratified poisson regression. Controlling for age, calendar period,
+#' # and race. Output effect of sex being male.
+#' poi_back(py_table,
+#'          quo(`1`),
+#'          loglin = ~ (sex=='M'),
+#'          ss = vars(ageCat, CPCat, race))
+
+
 poi_back <- function(data,
                     outcomeq,
                     ss,
@@ -143,7 +168,7 @@ poi_back <- function(data,
 
     cis <- purrr::map(1:(2*length(o$par)),
                ~ get_CI(., o=o, se=se, ll=loglik,
-                        Xloglin=Xloglin, Xlin=Xlin, data=data, ss=ss,
+                        Xloglin=Xloglin, Xlin=Xlin, data=data, alpha = alpha, ss=ss,
                         verbose = F)) %>%
       unlist()
 
@@ -154,7 +179,7 @@ poi_back <- function(data,
   } else if (gcis & length(o$par) == 1){
     cis <-   purrr::map(1:(2*length(o$par)),
                  ~ get_CI(., o, se=se, ll=loglik,
-                          Xloglin=Xloglin, Xlin=Xlin, data=data, ss=ss,
+                          Xloglin=Xloglin, Xlin=Xlin, data=data, alpha = alpha, ss=ss,
                           verbose = F))
     lower <- cis[[1]]
     upper <- cis[[2]]

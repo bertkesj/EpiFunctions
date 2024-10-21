@@ -12,19 +12,57 @@
 #' @param loglin A one sided function containing covariates in log-linear
 #' section of hazard function
 #' @param gcis A boolean (TRUE/FALSE) indicating if profile-likelihood CIs should
-#' be calcualted.
+#' be calculated.
+#' @param alpha A numeric between 0 and 1, indicating the level of significance
+#' of the profile likelihood confidence intervals ouptputed when gcis = TRUE.
 #'
 #' @return
 #' A list containing:
 #' *  output:      A tibble containing paratemter estimates (est), standard errors (se), and lower/upper CIs,
 #' *  neg2LL_diff: -2 * log-likelihood,
 #' *  AIC:         neg2LL_diff + 2 * number of parameters,
-#' *  hessian:     Hessian matrix o$hessian
+#' *  hessian:     Hessian matrix
 #'
 #' @export
 #' @importFrom rlang .data
 #' @examples
-coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
+#'
+#' library(dplyr)
+#'
+#' # Typical usage is to create a risk-set, add a time-dependent exposure,
+#' # and then perform Cox regression.
+#' risk_sets <- example_person %>%
+#'   mutate(dob = as.Date(dob),
+#'          pybegin= as.Date(pybegin),
+#'          dlo = as.Date(dlo),
+#'
+#'          sex = gender,
+#'
+#'          case = (lung_cancer == 'TRUE')) %>%
+#'   gt_rs()
+#'
+#' # Add time dependent cumulative exposure, 0 yr lag and 10 yr lag
+#' risk_sets <- example_history %>%
+#'   mutate(begin_dt = as.Date(begin_dt),
+#'          end_dt= as.Date(end_dt),
+#'
+#'          daily_exposure = as.numeric(daily_exposure)) %>%
+#'   right_join(risk_sets,
+#'              by='id',
+#'              relationship = 'many-to-many') %>%
+#'   mutate(cumulative_exposure_lag0 = cum_exp(daily_exposure, begin_dt, end_dt, cut_dt, 0),
+#'          cumulative_exposure_lag10 = cum_exp(daily_exposure, begin_dt, end_dt, cut_dt, 10)) %>%
+#'   group_by(case_id, id, case, cut_dt) %>%
+#'   dplyr::summarize(cumulative_exposure_lag0 = sum(cumulative_exposure_lag0),
+#'                    cumulative_exposure_lag10 = sum(cumulative_exposure_lag10),
+#'                    .groups='drop')
+#'
+#' # Perform Cox-regression
+#' coxphreg(risk_sets,
+#'          loglin = ~ scale(cumulative_exposure_lag10, scale = 100000))
+
+
+coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F, alpha = 0.95){
 
   ll <- function(b, data, Xloglin, Xlin) {
 
@@ -106,14 +144,14 @@ coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
     # cl <- makeCluster(numCores)
     # registerDoParallel(cl)
     # cis <- foreach(i=1:(2*length(o$par)), .export = c('ll', 'f3', 'error_fail',
-    #                                                   'get_CI')) %dopar% get_CI(i, o=o, df=df, se=se, Xloglin=Xloglin, Xlin=Xlin, ll=ll, verbose = F)
+    #                                                   'get_CI')) %dopar% get_CI(i, o=o, df=df, se=se, Xloglin=Xloglin, Xlin=Xlin, ll=ll, verbose = F, alpha = alpha)
     #
     # stopCluster(cl)
     #
 
     cis <- purrr::map(1:(2*length(o$par)),
                ~ get_CI(., o=o, se=se,
-                        Xloglin=Xloglin, Xlin=Xlin, data=data,
+                        Xloglin=Xloglin, Xlin=Xlin, data=data, alpha = alpha,
                         ll=ll,
                         verbose = F)) %>%
       unlist()
@@ -125,7 +163,7 @@ coxphreg <- function(data, lin = ~ 1, loglin = ~ 1, gcis = F){
   } else if (gcis & length(o$par) == 1){
     cis <-   purrr::map(1:(2*length(o$par)),
                  ~ get_CI(., o, se=se,
-                          Xloglin=Xloglin, Xlin=Xlin, data=data,
+                          Xloglin=Xloglin, Xlin=Xlin, data=data, alpha = alpha,
                           ll=ll,
                           verbose = F))
     lower <- cis[[1]]

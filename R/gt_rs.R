@@ -19,6 +19,19 @@
 #' @return A tibble containing the risk sets for each case using age as the time-scale.
 #' @export
 #'
+#' @examples
+#' library(dplyr)
+#' risk_sets <- example_person %>%
+#'   mutate(dob = as.Date(dob),
+#'          pybegin= as.Date(pybegin),
+#'          dlo = as.Date(dlo),
+#'
+#'          sex = gender,
+#'
+#'          case = (lung_cancer == 'TRUE')) %>%
+#'   gt_rs()
+#'
+#'
 gt_rs <- function(person){
   # Expects: id, case, race, sex, dob, pybegin, dlo!!!!!
   # Calculate age risk begin and end for all people

@@ -39,3 +39,28 @@ lower/upper CIs, and gradients,
 Performs background stratified poisson regression on a tibble/data.frame containing
 stratified person-time.
 }
+\examples{
+
+library(dplyr)
+
+# Stratify person file.
+# Automatically stratifies by race, sex, age and calendar period.
+py_table <- example_person \%>\%
+  mutate(dob = as.Date(dob),
+         pybegin= as.Date(pybegin),
+         dlo = as.Date(dlo),
+
+         sex = gender,
+
+         outcome = if_else(lung_cancer == 'TRUE',
+                           1,
+                           NA)) \%>\%
+  get_table_rapid(break_yr = 5)
+
+# Background stratified poisson regression. Controlling for age, calendar period,
+# and race. Output effect of sex being male.
+poi_back(py_table,
+         quo(`1`),
+         loglin = ~ (sex=='M'),
+         ss = vars(ageCat, CPCat, race))
+}
