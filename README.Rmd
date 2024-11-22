@@ -405,13 +405,13 @@ The disadvantage of this is that all stratification variables are estimated expl
 
 Additionally, `glm()` does not allow for the linear/ERR specification of the RR function.  
 
-#### Final Notes  
+## Final Notes  
 It is worth at this point to note that we have fit four different regressions to the example data in this cohort: 2 Cox regressions and 2 poission regressions. They each are attempting to estimate the effect of exposure on the outcome while controlling for age, calendar period / birth date, race and sex.  
 
 Controlling for birth date and age implicitly controls for calendar period since birth date + age will perfectly define the current date. Similarly, controlling for age and birth date implicitly controls for calendar period. Therefore, the above models should largely be equivalent.  
 
 Below plots the outcome from each of the above regressions:  
-```{r, echo=FALSE, fig.align='center', fig.width=4, fig.height=4}
+```{r, echo=FALSE, fig.align='center', fig.width=8, fig.height=6}
 
 bind_rows(mutate(poi_glm, model = 'Poisson glm'),
           mutate(poi_out, model = 'Poisson poi_back'),

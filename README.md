@@ -8,6 +8,7 @@ EpiFunctions
 - [Cox Regression](#cox-regression)
 - [Background Stratified Poisson
   Regression](#background-stratified-poisson-regression)
+- [Final Notes](#final-notes)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 <!-- badges: start -->
@@ -1118,7 +1119,7 @@ py_table <- get_table_history_est(person,
                                   us_119ucod_19602021,
                                   history,
                                   exps = list(exp))
-#> ===========  16 % // Execution time: 4S  // Estimated time remaining: 18S =======================  33 % // Execution time: 7S  // Estimated time remaining: 13S ===================================  50 % // Execution time: 10S  // Estimated time remaining: 10S ==============================================  66 % // Execution time: 13S  // Estimated time remaining: 6S ==========================================================  83 % // Execution time: 15S  // Estimated time remaining: 3S ======================================================================  100 % // Execution time: 18S  // Estimated time remaining: 0S
+#> ===========  16 % // Execution time: 4S  // Estimated time remaining: 18S =======================  33 % // Execution time: 7S  // Estimated time remaining: 13S ===================================  50 % // Execution time: 10S  // Estimated time remaining: 9S ==============================================  66 % // Execution time: 13S  // Estimated time remaining: 6S ==========================================================  83 % // Execution time: 15S  // Estimated time remaining: 3S ======================================================================  100 % // Execution time: 18S  // Estimated time remaining: 0S
 ```
 
 <table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
@@ -1353,7 +1354,7 @@ faster.
 Additionally, `glm()` does not allow for the linear/ERR specification of
 the RR function.
 
-#### Final Notes
+## Final Notes
 
 It is worth at this point to note that we have fit four different
 regressions to the example data in this cohort: 2 Cox regressions and 2
