@@ -486,9 +486,10 @@ The above person’s history file entry contains 5 exposure periods, one
 of which was unexposed. Below plots their cumulative exposure (which
 starts at 0) over time:  
 <img src="man/figures/README-unnamed-chunk-6-1.png" width="35%" style="display: block; margin: auto;" />
-Note that cumulative exposure increases by 6.5 units per day and
-decreases to 0.6 units per day towards the end of their exposure
-history.
+
+Note that cumulative exposure increases by 6.5 units per day and the
+rate of increase drops to 0.6 units per day towards the end of their
+exposure history.
 
 **NOTE:** Any gaps within the history file and the follow-up times (for
 example, the period between the last exposure period within the history
@@ -980,62 +981,71 @@ this difference. Below nearly replicates the above analysis (with birth
 cohort instead controlled for through defining fixed 10-year
 categories):
 
-    library(lubridate)
-    library(survival)
-    person <- person %>%
-      mutate(age_begin = difftime(pybegin, dob, units = 'days') %>%
-               as.numeric() %>%
-               `/`(365.25),
-             age_end = difftime(dlo, dob, units = 'days') %>%
-               as.numeric() %>%
-               `/`(365.25),
-             birth_cat = 10*floor(year(dob)/10))
-    event_times <- person %>%
-      filter(lung_cancer == 'TRUE') %>%
-      `$`(age_end) %>%
-      sort()
-    person_time <- person %>%
-      mutate(event_times = list(event_times)) %>%
-      unnest(event_times) %>%
-      filter(age_begin <= event_times & event_times <= age_end) %>%
-      group_by(id) %>%
-      mutate(cut_dt = dob + 365.25*event_times,
-             beg = if_else(row_number() == 1, 
-                           age_begin, 
-                           lag(event_times)),
-             end = event_times,
-             case = if_else(row_number() == n(),
-                            lung_cancer == 'TRUE',
-                            FALSE)) %>%
-      select(id, race, gender, birth_cat, beg, end, case, cut_dt)
-    person_time <- example_history %>%
-      mutate(begin_dt = as.Date(begin_dt),
-             end_dt= as.Date(end_dt),
-             
-             daily_exposure = as.numeric(daily_exposure)) %>%
-      right_join(person_time,
-                 by='id',
-                 relationship = 'many-to-many') %>%
-      mutate(cumulative_exposure_lag10 = cum_exp(daily_exposure, 
-                                                 begin_dt, end_dt, cut_dt, 
-                                                 10)) %>%
-      group_by(across(colnames(person_time))) %>%
-      summarize(cumulative_exposure_lag10 = sum(cumulative_exposure_lag10),
-                .groups='drop')
-    coxph(Surv(beg, end, case) ~ strata(race, gender, birth_cat) +
-            scale(cumulative_exposure_lag10, scale = 100000),
-            data = person_time,
-            ties='breslow')
-            
-    # Call:
-    # coxph(formula = Surv(beg, end, case) ~ strata(race, gender, birth_cat) + 
-    #     scale(cumulative_exposure_lag10, scale = 1e+05), data = person_time)
-    # 
-    #                                                     coef exp(coef) se(coef)     z      p
-    # scale(cumulative_exposure_lag10, scale = 1e+05)    6.942  1034.410    2.982 2.328 0.0199
-    # 
-    # Likelihood ratio test=5.01  on 1 df, p=0.02527
-    # n= 16106, number of events= 25 
+``` r
+library(lubridate)
+#> 
+#> Attaching package: 'lubridate'
+#> The following objects are masked from 'package:base':
+#> 
+#>     date, intersect, setdiff, union
+library(survival)
+person <- person %>%
+  mutate(age_begin = difftime(pybegin, dob, units = 'days') %>%
+           as.numeric() %>%
+           `/`(365.25),
+         age_end = difftime(dlo, dob, units = 'days') %>%
+           as.numeric() %>%
+           `/`(365.25),
+         birth_cat = 10*floor(year(dob)/10))
+event_times <- person %>%
+  filter(lung_cancer == 'TRUE') %>%
+  `$`(age_end) %>%
+  sort()
+person_time <- person %>%
+  mutate(event_times = list(event_times)) %>%
+  unnest(event_times) %>%
+  filter(age_begin <= event_times & event_times <= age_end) %>%
+  group_by(id) %>%
+  mutate(cut_dt = dob + 365.25*event_times,
+         beg = if_else(row_number() == 1, 
+                       age_begin, 
+                       lag(event_times)),
+         end = event_times,
+         case = if_else(row_number() == n(),
+                        lung_cancer == 'TRUE',
+                        FALSE)) %>%
+  select(id, race, gender, birth_cat, beg, end, case, cut_dt)
+person_time <- example_history %>%
+  mutate(begin_dt = as.Date(begin_dt),
+         end_dt= as.Date(end_dt),
+         
+         daily_exposure = as.numeric(daily_exposure)) %>%
+  right_join(person_time,
+             by='id',
+             relationship = 'many-to-many') %>%
+  mutate(cumulative_exposure_lag10 = cum_exp(daily_exposure, 
+                                             begin_dt, end_dt, cut_dt, 
+                                             10)) %>%
+  group_by(across(colnames(person_time))) %>%
+  summarize(cumulative_exposure_lag10 = sum(cumulative_exposure_lag10),
+            .groups='drop')
+coxph(Surv(beg, end, case) ~ strata(race, gender, birth_cat) +
+        scale(cumulative_exposure_lag10, scale = 100000),
+        data = person_time,
+        ties='breslow')
+#> Call:
+#> coxph(formula = Surv(beg, end, case) ~ strata(race, gender, birth_cat) + 
+#>     scale(cumulative_exposure_lag10, scale = 1e+05), data = person_time, 
+#>     ties = "breslow")
+#> 
+#>                                                     coef exp(coef) se(coef)
+#> scale(cumulative_exposure_lag10, scale = 1e+05)    6.942  1034.410    2.982
+#>                                                     z      p
+#> scale(cumulative_exposure_lag10, scale = 1e+05) 2.328 0.0199
+#> 
+#> Likelihood ratio test=5.01  on 1 df, p=0.02527
+#> n= 16106, number of events= 25
+```
 
 Another drawback of this method is computational. The `survival` package
 requires expanding the person file to each observed event-time. This is
@@ -1105,7 +1115,7 @@ py_table <- get_table_history_est(person,
                                   us_119ucod_19602021,
                                   history,
                                   exps = list(exp))
-#> ===========  16 % // Execution time: 4S  // Estimated time remaining: 20S =======================  33 % // Execution time: 7S  // Estimated time remaining: 15S ===================================  50 % // Execution time: 11S  // Estimated time remaining: 10S ==============================================  66 % // Execution time: 14S  // Estimated time remaining: 6S ==========================================================  83 % // Execution time: 17S  // Estimated time remaining: 3S ======================================================================  100 % // Execution time: 19S  // Estimated time remaining: 0S
+#> ===========  16 % // Execution time: 4S  // Estimated time remaining: 18S =======================  33 % // Execution time: 7S  // Estimated time remaining: 13S ===================================  50 % // Execution time: 10S  // Estimated time remaining: 9S ==============================================  66 % // Execution time: 13S  // Estimated time remaining: 6S ==========================================================  83 % // Execution time: 15S  // Estimated time remaining: 3S ======================================================================  100 % // Execution time: 18S  // Estimated time remaining: 0S
 ```
 
 <table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
@@ -1130,7 +1140,7 @@ daily_exposureCat
 pdays
 </th>
 <th style="text-align:right;">
-\_o16
+o16
 </th>
 <th style="text-align:right;">
 daily_exposure
@@ -1140,10 +1150,19 @@ daily_exposure
 <tbody>
 <tr>
 <td style="text-align:left;">
-\[15,20)
+15,20
 </td>
 <td style="text-align:left;">
-\[1960,1965) \]
+1960,1965
+</td>
+<td style="text-align:left;">
+F
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+-Inf,0
 </td>
 <td style="text-align:right;">
 235
@@ -1157,10 +1176,19 @@ daily_exposure
 </tr>
 <tr>
 <td style="text-align:left;">
-\[15,20)
+15,20
 </td>
 <td style="text-align:left;">
-\[1960,1965) \]
+1960,1965
+</td>
+<td style="text-align:left;">
+M
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+-Inf,0
 </td>
 <td style="text-align:right;">
 186
@@ -1174,10 +1202,19 @@ daily_exposure
 </tr>
 <tr>
 <td style="text-align:left;">
-\[15,20)
+15,20
 </td>
 <td style="text-align:left;">
-\[1965,1970) \]
+1965,1970
+</td>
+<td style="text-align:left;">
+F
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+-Inf,0
 </td>
 <td style="text-align:right;">
 499
@@ -1191,10 +1228,19 @@ daily_exposure
 </tr>
 <tr>
 <td style="text-align:left;">
-\[15,20)
+15,20
 </td>
 <td style="text-align:left;">
-\[1965,1970) \]
+1965,1970
+</td>
+<td style="text-align:left;">
+M
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+-Inf,0
 </td>
 <td style="text-align:right;">
 2993
@@ -1208,10 +1254,19 @@ daily_exposure
 </tr>
 <tr>
 <td style="text-align:left;">
-\[15,20)
+15,20
 </td>
 <td style="text-align:left;">
-\[1970,1975) \]
+1970,1975
+</td>
+<td style="text-align:left;">
+F
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+-Inf,0
 </td>
 <td style="text-align:right;">
 685
@@ -1294,6 +1349,107 @@ faster.
 
 Additionally, `glm()` does not allow for the linear/ERR specification of
 the RR function.
+
+#### Final Notes
+
+It is worth at this point to note that we have fit four different
+regressions to the example data in this cohort: 2 Cox regressions and 2
+poission regressions. They each are attempting to estimate the effect of
+exposure on the outcome while controlling for age, calendar period /
+birth date, race and sex.
+
+Controlling for birth date and age implicitly controls for calendar
+period since birth date + age will perfectly define the current date.
+Similarly, controlling for age and birth date implicitly controls for
+calendar period. Therefore, the above models should largely be
+equivalent.
+
+Below plots the outcome from each of the above regressions:  
+<img src="man/figures/README-unnamed-chunk-21-1.png" width="35%" />
+These estimates are largely equivalent. The differences are due to
+slight differences in how the covariates are specified. Namely, sex and
+race are categorical and treated the same in each model. The difference
+in age and calendar period / birth date. These are summarized below:
+
+<table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:left;">
+birth date / calendar period
+</th>
+<th style="text-align:left;">
+age
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+coxphreg
+</td>
+<td style="text-align:left;">
+birth date caliper matched within 5 years of case
+</td>
+<td style="text-align:left;">
+\|exact control through matching
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+coxphreg
+</td>
+<td style="text-align:left;">
+birth date as predefined 10-year fixed categories
+</td>
+<td style="text-align:left;">
+\|exact control through matching
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+poi_back
+</td>
+<td style="text-align:left;">
+5 year calendar period categories
+</td>
+<td style="text-align:left;">
+5 yr categories
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+glm
+</td>
+<td style="text-align:left;">
+5 year calendar period categories
+</td>
+<td style="text-align:left;">
+5 yr categories
+</td>
+</tr>
+</tbody>
+</table>
+
+Generally, since the Cox regressions match on exact age, it provides
+more precise control as opposed to the categorical specification (5-year
+categories) used in Poisson regression.
+
+Additionally, while Cox regression generally imposes the ‘proportional
+hazards’ assumption, that same assumption is also imposed in the poisson
+regressions. In this setting, the proportional hazard assumption assumes
+that the effect of risk is the same across ages (i.e. there is no
+interaction between the time-scale age and exposure). It is a result
+from how the risk function is defined, which is the same in both these
+analyses.
+
+Finally, while the above examples can be replicated through existing
+packages, the current package allows for two extenstions:  
+1. defining the risk function as a linear (vs log-linear) function of
+exposure and  
+2. outputting profile likelihood confidence intervals by setting
+`gcis = TRUE`
 
 #### References
 

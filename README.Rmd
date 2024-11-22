@@ -161,7 +161,8 @@ history %>%
   theme_bw()
 
 ```  
-Note that cumulative exposure increases by 6.5 units per day and decreases to 0.6 units per day towards the end of their exposure history.  
+  
+Note that cumulative exposure increases by 6.5 units per day and the rate of increase drops to 0.6 units per day towards the end of their exposure history.  
 
 **NOTE:** Any gaps within the history file and the follow-up times (for example, the period between the last exposure period within the history file through the end of follow-up) are assumed to be 0. That is, cumulative exposure does not change during these periods.
 
@@ -227,12 +228,19 @@ To perform Cox regression on these risk-sets, the `coxphreg()` function is used.
 ```{r}
 coxphreg(risk_sets,
          loglin = ~ scale(cumulative_exposure_lag10, scale = 100000))
-```
+```  
+```{r, echo=FALSE}
+cox_out <- coxphreg(risk_sets,
+         loglin = ~ scale(cumulative_exposure_lag10, scale = 100000)) %>%
+  `$`(output)
+
+```  
+
 Note that this can also be accomplished through the use of the `survival` package, where matching on race, sex and birth cohort being the equivalent of a stratified Cox regression on these variables. However, the `survival` package does not allow for specification of the hazard ratio with a linear term (i.e. ERR calculation).  
 
 Additionally, `EpiFunctions` matches on birth dates within 5 years of the index case (known as caliper matching), whereas stratified Cox regression with the `survival` package defines fixed categories. See "Modern Epidemiology" (Ahlbom et al., 2021) for further discussion of this difference. Below nearly replicates the above analysis (with birth cohort instead controlled for through defining fixed 10-year categories):  
 
-```
+```{r}
 library(lubridate)
 library(survival)
 person <- person %>%
@@ -280,17 +288,15 @@ coxph(Surv(beg, end, case) ~ strata(race, gender, birth_cat) +
         data = person_time,
         ties='breslow')
         
-# Call:
-# coxph(formula = Surv(beg, end, case) ~ strata(race, gender, birth_cat) + 
-#     scale(cumulative_exposure_lag10, scale = 1e+05), data = person_time)
-# 
-#                                                     coef exp(coef) se(coef)     z      p
-# scale(cumulative_exposure_lag10, scale = 1e+05)    6.942  1034.410    2.982 2.328 0.0199
-# 
-# Likelihood ratio test=5.01  on 1 df, p=0.02527
-# n= 16106, number of events= 25 
 ```  
-
+```{r, echo=FALSE}
+cox_mod <- coxph(Surv(beg, end, case) ~ strata(race, gender, birth_cat) +
+        scale(cumulative_exposure_lag10, scale = 100000),
+        data = person_time,
+        ties='breslow')
+cox_surv <- tibble(est = cox_mod$coefficients,
+                   se = sqrt(cox_mod$var))
+```
 Another drawback of this method is computational. The `survival` package requires expanding the person file to each observed event-time. This is similar to the formation of risk-sets, however, matching on additional confounders (gender, race, birth date) significantly reduces the size of this file and speeds up computation time.  
 
 ## Background Stratified Poisson Regression  
@@ -345,12 +351,19 @@ py_table <- get_table_history_est(person,
 ```  
 
 ```{r, echo=FALSE}
-py_table %>%
+library(stringr)
+py_table %>% 
+  ungroup() %>%
+  mutate(across(c(ageCat, CPCat, daily_exposureCat),
+         ~ str_remove_all(., '\\[|\\)|\\]|\\('))) %>%
+  rename(o16 = `_o16`) %>%
+  
   head(5) %>%
   kable() %>%
   kable_styling(c("striped"), 
                  full_width = FALSE)
 ```   
+  
 This stratified person-time table has one outcome (saved as variable `_o16`) from the person file, which was recoded as lung cancer ICD-10 code C34 and mapped to LTAS minor 16. It has person days (`pdays`) and outcomes stratified into 5-year age (`ageCat`), 5-year calendar period (`CPCat`), gender, race and exposure (`daily_exposureCat`) categories. The person-time weighted mean exposure (`daily_exposure`) for each strata are also included and can be treated as a continuous variable in future regressions.  
 
 The function `poi_back` will performed background stratified poisson regression on this data. It reads in a stratified table, which is required to include a variable named `pdays` indicating the amount of person-time (outputted as number of days from `get_table_history_est()`) for a given strata. The user can then define which confounders to use as stratification in the regression (below are age, calendar period, gender and race wrapped in `vars()`) and the variable including the outcome counts (below `_o16`): 
@@ -360,6 +373,13 @@ poi_back(py_table,
          ss=vars(ageCat, CPCat, gender, race),
          loglin = ~ scale(daily_exposure, scale = 100000))
 ```  
+```{r, echo=FALSE}
+poi_out <- poi_back(py_table,
+         quo(`_o16`),
+         ss=vars(ageCat, CPCat, gender, race),
+         loglin = ~ scale(daily_exposure, scale = 100000)) %>%
+  `$`(output)
+```
 
 Note this could also be accomplished through R's `glm()` function:  
 ```{r}
@@ -374,9 +394,70 @@ summary(model)$coefficients %>%
   as_tibble(rownames = 'var') %>%
   filter(str_count(var, 'daily_exposure') > 0)
 ```  
+```{r, echo=FALSE}
+poi_glm <- summary(model)$coefficients %>%
+  as_tibble(rownames = 'var') %>%
+  filter(str_count(var, 'daily_exposure') > 0) %>%
+  select(est = Estimate, se = `Std. Error`)
+```
+
 The disadvantage of this is that all stratification variables are estimated explicitly. In this case, the poisson regression estimates `r nrow(summary(model)$coefficients)` covariates (1 exposure and `r nrow(summary(model)$coefficients) - 1` strata combinations). The function `poi_back()` treats these `r nrow(summary(model)$coefficients) - 1` covariates as nuisance parameters and do not explicitly estimate them. Therefore, `poi_back()` will typically run faster. 
 
 Additionally, `glm()` does not allow for the linear/ERR specification of the RR function.  
+
+#### Final Notes  
+It is worth at this point to note that we have fit four different regressions to the example data in this cohort: 2 Cox regressions and 2 poission regressions. They each are attempting to estimate the effect of exposure on the outcome while controlling for age, calendar period / birth date, race and sex.  
+
+Controlling for birth date and age implicitly controls for calendar period since birth date + age will perfectly define the current date. Similarly, controlling for age and birth date implicitly controls for calendar period. Therefore, the above models should largely be equivalent.  
+
+Below plots the outcome from each of the above regressions:  
+```{r, echo=FALSE}
+
+bind_rows(mutate(poi_glm, model = 'Poisson glm'),
+          mutate(poi_out, model = 'Poisson poi_back'),
+          mutate(cox_out, model = 'Cox coxphreg'),
+          mutate(cox_surv, model = 'Cox coxph')) %>%
+  mutate(model = factor(model, 
+                        c('Cox coxphreg', 'Cox coxph',
+                          'Poisson poi_back', 'Poisson glm'),
+                        c('Cox coxphreg', 'Cox coxph\nSurvival package',
+                          'Poisson poi_back', 'Poisson glm\nbase R'))) %>%
+  mutate(lower = est - 1.96*se,
+         upper = est + 1.96*se) %>%
+  ggplot() +
+  geom_point(aes(x=model,
+                 y=est)) +
+  geom_errorbar(aes(x=model,
+                    ymin=lower,
+                    ymax=upper),
+                width = .25) +
+  theme_bw() +
+  xlab('') +
+  ylab('RR per 100,000 units with 95% CIs')
+```
+These estimates are largely equivalent. The differences are due to slight differences in how the covariates are specified. Namely, sex and race are categorical and treated the same in each model. The difference in age and calendar period / birth date. These are summarized below:
+
+```{r, echo=FALSE}
+tribble(
+  ~ ` `, ~`birth date / calendar period`, ~`age`,
+"coxphreg",	"birth date caliper matched \nwithin 5 years of case", "exact control through matching",
+"coxphreg",	"birth date as predefined \n10-year fixed categories", "exact control through matching",
+"poi_back",	"5 year calendar period categories",	"5 yr categories",
+"glm",	"5 year calendar period categories",	"5 yr categories",
+) %>%
+    kable() %>%
+  kable_styling(c("striped"), 
+                 full_width = FALSE)
+```
+
+Generally, since the Cox regressions match on exact age, it provides more precise control as opposed to the categorical specification (5-year categories) used in Poisson regression.  
+
+Additionally, while Cox regression generally imposes the 'proportional hazards' assumption, that same assumption is also imposed in the poisson regressions. In this setting, the proportional hazard assumption assumes that the effect of risk is the same across ages (i.e. there is no interaction between the time-scale age and exposure). It is a result from how the risk function is defined, which is the same in both these analyses.  
+
+Finally, while the above examples can be replicated through existing packages, the current package allows for two extenstions:  
+1. defining the risk function as a linear (vs log-linear) function of exposure and  
+2. outputting profile likelihood confidence intervals by setting `gcis = TRUE`  
+
 
 #### References
 Richardson, David B., and Bryan Langholz. "Background stratified Poisson regression analysis of cohort data." Radiation and environmental biophysics 51 (2012): 15-22.  
