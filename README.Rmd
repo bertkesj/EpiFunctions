@@ -411,7 +411,7 @@ It is worth at this point to note that we have fit four different regressions to
 Controlling for birth date and age implicitly controls for calendar period since birth date + age will perfectly define the current date. Similarly, controlling for age and birth date implicitly controls for calendar period. Therefore, the above models should largely be equivalent.  
 
 Below plots the outcome from each of the above regressions:  
-```{r, echo=FALSE, fig.align='center', fig.width=8, fig.height=6}
+```{r, echo=FALSE, fig.align='center', fig.width=10, fig.height=6}
 
 bind_rows(mutate(poi_glm, model = 'Poisson glm'),
           mutate(poi_out, model = 'Poisson poi_back'),
@@ -420,8 +420,8 @@ bind_rows(mutate(poi_glm, model = 'Poisson glm'),
   mutate(model = factor(model, 
                         c('Cox coxphreg', 'Cox coxph',
                           'Poisson poi_back', 'Poisson glm'),
-                        c('Cox coxphreg', 'Cox coxph\nSurvival package',
-                          'Poisson poi_back', 'Poisson glm\nbase R'))) %>%
+                        c('Cox: coxphreg', 'Cox: coxph\nsurvival package',
+                          'Poisson: poi_back', ': glm\nbase R'))) %>%
   mutate(lower = est - 1.96*se,
          upper = est + 1.96*se) %>%
   ggplot() +
@@ -433,7 +433,9 @@ bind_rows(mutate(poi_glm, model = 'Poisson glm'),
                 width = .25) +
   theme_bw() +
   xlab('') +
-  ylab('log(RR) per 100,000 units with 95% CIs')
+  ylab('log(RR) per 100,000 units with 95% CIs') +
+  theme(axis.title=element_text(size=18),
+        axis.text.x=element_text(size=18))
 ```
   
 These estimates are largely equivalent. The differences are due to slight differences in how the covariates are specified. Namely, sex and race are categorical and treated the same in each model. The difference in age and calendar period / birth date. These are summarized below:
