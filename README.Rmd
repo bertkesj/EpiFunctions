@@ -72,7 +72,7 @@ Format = c('',
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of EpiFunctions is to provide a set of functions to perform survival analysis regressions not found elsewhere. In particular, background stratified Poisson regression, as described in Richardson and Langholz (2012), and matched Cox regression. Both regressions allow for specification of the relative risk (RR) function as the traditional log-linear from: [RR = exp(b * exposure)] as well as a linear form: [RR = (1 + b * exposure)] commonly used in radiation research to cacluate Excess Relative Risk (ERR).  
+The goal of EpiFunctions is to provide a set of functions to perform survival analysis regressions not found elsewhere. In particular, background stratified Poisson regression, as described in Richardson and Langholz (2012), and matched Cox regression. Both regressions allow for specification of the relative risk (RR) function as the traditional log-linear from: [RR = exp(b * exposure)] as well as a linear form: [RR = (1 + b * exposure)] commonly used in radiation research to cacluate Excess Relative Risk (ERR). Additionally, it provides options for the calculation of profile likelihood confidence intervals (vs the traditional Wald-based confidence intervales).  
 
 Additionally, tools are provided to implement each regression in the presence of time-dependent exposures.  
 
@@ -411,7 +411,7 @@ It is worth at this point to note that we have fit four different regressions to
 Controlling for birth date and age implicitly controls for calendar period since birth date + age will perfectly define the current date. Similarly, controlling for age and birth date implicitly controls for calendar period. Therefore, the above models should largely be equivalent.  
 
 Below plots the outcome from each of the above regressions:  
-```{r, echo=FALSE}
+```{r, echo=FALSE, fig.align='center', fig.width=4, fig.height=4}
 
 bind_rows(mutate(poi_glm, model = 'Poisson glm'),
           mutate(poi_out, model = 'Poisson poi_back'),
@@ -435,13 +435,14 @@ bind_rows(mutate(poi_glm, model = 'Poisson glm'),
   xlab('') +
   ylab('RR per 100,000 units with 95% CIs')
 ```
+  
 These estimates are largely equivalent. The differences are due to slight differences in how the covariates are specified. Namely, sex and race are categorical and treated the same in each model. The difference in age and calendar period / birth date. These are summarized below:
 
 ```{r, echo=FALSE}
 tribble(
   ~ ` `, ~`birth date / calendar period`, ~`age`,
-"coxphreg",	"birth date caliper matched \nwithin 5 years of case", "exact control through matching",
-"coxphreg",	"birth date as predefined \n10-year fixed categories", "exact control through matching",
+"coxphreg",	"birth date caliper matched within 5 years of case", "exact control through matching",
+"coxph",	"birth date as predefined 10-year fixed categories", "exact control through matching",
 "poi_back",	"5 year calendar period categories",	"5 yr categories",
 "glm",	"5 year calendar period categories",	"5 yr categories",
 ) %>%
@@ -452,7 +453,7 @@ tribble(
 
 Generally, since the Cox regressions match on exact age, it provides more precise control as opposed to the categorical specification (5-year categories) used in Poisson regression.  
 
-Additionally, while Cox regression generally imposes the 'proportional hazards' assumption, that same assumption is also imposed in the poisson regressions. In this setting, the proportional hazard assumption assumes that the effect of risk is the same across ages (i.e. there is no interaction between the time-scale age and exposure). It is a result from how the risk function is defined, which is the same in both these analyses.  
+Additionally, while Cox regression generally imposes the 'proportional hazards' assumption, that same assumption is also imposed in the poisson regressions. In this setting, the proportional hazard assumption assumes that the effect of exposure on risk is the same across ages (i.e. there is no interaction between the time-scale age and exposure). It is a result from how the risk function is defined, which is the same in both types of regression.  
 
 Finally, while the above examples can be replicated through existing packages, the current package allows for two extenstions:  
 1. defining the risk function as a linear (vs log-linear) function of exposure and  

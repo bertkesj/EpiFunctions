@@ -20,7 +20,9 @@ Langholz (2012), and matched Cox regression. Both regressions allow for
 specification of the relative risk (RR) function as the traditional
 log-linear from: \[RR = exp(b \* exposure)\] as well as a linear form:
 \[RR = (1 + b \* exposure)\] commonly used in radiation research to
-cacluate Excess Relative Risk (ERR).
+cacluate Excess Relative Risk (ERR). Additionally, it provides options
+for the calculation of profile likelihood confidence intervals (vs the
+traditional Wald-based confidence intervales).
 
 Additionally, tools are provided to implement each regression in the
 presence of time-dependent exposures.
@@ -1115,7 +1117,7 @@ py_table <- get_table_history_est(person,
                                   us_119ucod_19602021,
                                   history,
                                   exps = list(exp))
-#> ===========  16 % // Execution time: 4S  // Estimated time remaining: 18S =======================  33 % // Execution time: 7S  // Estimated time remaining: 13S ===================================  50 % // Execution time: 10S  // Estimated time remaining: 9S ==============================================  66 % // Execution time: 13S  // Estimated time remaining: 6S ==========================================================  83 % // Execution time: 15S  // Estimated time remaining: 3S ======================================================================  100 % // Execution time: 18S  // Estimated time remaining: 0S
+#> ===========  16 % // Execution time: 4S  // Estimated time remaining: 17S =======================  33 % // Execution time: 7S  // Estimated time remaining: 13S ===================================  50 % // Execution time: 10S  // Estimated time remaining: 10S ==============================================  66 % // Execution time: 13S  // Estimated time remaining: 6S ==========================================================  83 % // Execution time: 16S  // Estimated time remaining: 3S ======================================================================  100 % // Execution time: 18S  // Estimated time remaining: 0S
 ```
 
 <table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
@@ -1365,7 +1367,8 @@ calendar period. Therefore, the above models should largely be
 equivalent.
 
 Below plots the outcome from each of the above regressions:  
-<img src="man/figures/README-unnamed-chunk-21-1.png" width="35%" />
+<img src="man/figures/README-unnamed-chunk-21-1.png" width="35%" style="display: block; margin: auto;" />
+
 These estimates are largely equivalent. The differences are due to
 slight differences in how the covariates are specified. Namely, sex and
 race are categorical and treated the same in each model. The difference
@@ -1393,18 +1396,18 @@ coxphreg
 birth date caliper matched within 5 years of case
 </td>
 <td style="text-align:left;">
-\|exact control through matching
+exact control through matching
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-coxphreg
+coxph
 </td>
 <td style="text-align:left;">
 birth date as predefined 10-year fixed categories
 </td>
 <td style="text-align:left;">
-\|exact control through matching
+exact control through matching
 </td>
 </tr>
 <tr>
@@ -1439,10 +1442,10 @@ categories) used in Poisson regression.
 Additionally, while Cox regression generally imposes the ‘proportional
 hazards’ assumption, that same assumption is also imposed in the poisson
 regressions. In this setting, the proportional hazard assumption assumes
-that the effect of risk is the same across ages (i.e. there is no
-interaction between the time-scale age and exposure). It is a result
-from how the risk function is defined, which is the same in both these
-analyses.
+that the effect of exposure on risk is the same across ages (i.e. there
+is no interaction between the time-scale age and exposure). It is a
+result from how the risk function is defined, which is the same in both
+types of regression.
 
 Finally, while the above examples can be replicated through existing
 packages, the current package allows for two extenstions:  
