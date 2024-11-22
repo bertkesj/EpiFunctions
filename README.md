@@ -18,11 +18,11 @@ survival analysis regressions not found elsewhere. In particular,
 background stratified Poisson regression, as described in Richardson and
 Langholz (2012), and matched Cox regression. Both regressions allow for
 specification of the relative risk (RR) function as the traditional
-log-linear from: \[RR = exp(b \* exposure)\] as well as a linear form:
+log-linear form: \[RR = exp(b \* exposure)\] as well as a linear form:
 \[RR = (1 + b \* exposure)\] commonly used in radiation research to
-cacluate Excess Relative Risk (ERR). Additionally, it provides options
+calculate Excess Relative Risk (ERR). Additionally, it provides options
 for the calculation of profile likelihood confidence intervals (vs the
-traditional Wald-based confidence intervales).
+traditional Wald-based confidence intervals).
 
 Additionally, tools are provided to implement each regression in the
 presence of time-dependent exposures.
@@ -130,7 +130,8 @@ date
 …
 </td>
 <td style="text-align:left;">
-Additional variable(s) defining death/incidence outcome
+Additional variable(s) time-fixed strata and variables defining
+death/incidence outcome
 </td>
 <td style="text-align:left;">
 …
@@ -317,7 +318,7 @@ next sections).
 
 ### History File
 
-Information on a time-dependent covariate (aside from age and calendar
+Information on time-dependent covariates (aside from age and calendar
 period) will be contained in a history file. This file contains one row
 per person per exposure period. An exposure period is a period of time
 in which all daily values/levels of an exposure variable are assumed to
@@ -386,7 +387,7 @@ numeric
 </tbody>
 </table>
 
-Again, EpiFunctions comes with a ‘dummy’ history file, named
+EpiFunctions comes with a ‘dummy’ history file also, named
 `example_history`, for illustration and testing.
 
 Below are the entries for person id ‘198’ in the `example_history`
@@ -944,10 +945,10 @@ FALSE
 </table>
 
 To perform Cox regression on these risk-sets, the `coxphreg()` function
-is used. Below calculates log(HR) for a lagged 10 exposure. Note, due to
-the high value of exposures, these values are scaled and the below
-represent log(HR) per 100,000 unit increase in dose, matched on age,
-race, sex, birth-cohort:
+is used. Below calculates log(HR) for a 10 year lagged exposure. Note,
+due to the high value of exposures, these values are scaled and the
+below represent log(HR) per 100,000 unit increase in dose, matched on
+age, race, sex, birth-cohort:
 
 ``` r
 coxphreg(risk_sets,
@@ -1117,7 +1118,7 @@ py_table <- get_table_history_est(person,
                                   us_119ucod_19602021,
                                   history,
                                   exps = list(exp))
-#> ===========  16 % // Execution time: 4S  // Estimated time remaining: 17S =======================  33 % // Execution time: 7S  // Estimated time remaining: 13S ===================================  50 % // Execution time: 10S  // Estimated time remaining: 10S ==============================================  66 % // Execution time: 13S  // Estimated time remaining: 6S ==========================================================  83 % // Execution time: 16S  // Estimated time remaining: 3S ======================================================================  100 % // Execution time: 18S  // Estimated time remaining: 0S
+#> ===========  16 % // Execution time: 4S  // Estimated time remaining: 18S =======================  33 % // Execution time: 7S  // Estimated time remaining: 13S ===================================  50 % // Execution time: 10S  // Estimated time remaining: 10S ==============================================  66 % // Execution time: 13S  // Estimated time remaining: 6S ==========================================================  83 % // Execution time: 15S  // Estimated time remaining: 3S ======================================================================  100 % // Execution time: 18S  // Estimated time remaining: 0S
 ```
 
 <table class="table table-striped" style="width: auto !important; margin-left: auto; margin-right: auto;">
@@ -1298,7 +1299,7 @@ required to include a variable named `pdays` indicating the amount of
 person-time (outputted as number of days from `get_table_history_est()`)
 for a given strata. The user can then define which confounders to use as
 stratification in the regression (below are age, calendar period, gender
-and race wrapped in `vars()`) and the variable including the outcome
+and race wrapped in `vars()`) and the variable indicating the outcome
 counts (below `_o16`):
 
 ``` r
@@ -1440,15 +1441,16 @@ more precise control as opposed to the categorical specification (5-year
 categories) used in Poisson regression.
 
 Additionally, while Cox regression generally imposes the ‘proportional
-hazards’ assumption, that same assumption is also imposed in the poisson
-regressions. In this setting, the proportional hazard assumption assumes
-that the effect of exposure on risk is the same across ages (i.e. there
-is no interaction between the time-scale age and exposure). It is a
-result from how the risk function is defined, which is the same in both
-types of regression.
+hazards’ assumption, that same assumption is also imposed in these
+poisson regressions. In this setting, the proportional hazard assumption
+assumes that the effect of exposure on risk is the same across ages
+(i.e. there is no interaction between the time-scale age and exposure).
+It is a result from how the risk function is defined, which is the same
+in both types of regression, and does not include an age x exposure
+interaction term.
 
 Finally, while the above examples can be replicated through existing
-packages, the current package allows for two extenstions:  
+packages, the current package allows for two extensions:  
 1. defining the risk function as a linear (vs log-linear) function of
 exposure and  
 2. outputting profile likelihood confidence intervals by setting
